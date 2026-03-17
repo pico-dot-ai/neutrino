@@ -1,0 +1,69 @@
+{
+  "name": "neutrino-architecture-contract",
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-28",
+  "purpose": "Define architecture in one place and enforce implementation conformance.",
+  "principles": [
+    "All infrastructure integrations must be implemented as adapters behind stable ports.",
+    "Application code imports contract ports, not concrete infrastructure adapters.",
+    "Postgres is the durable system of record; vector and realtime systems can be swapped.",
+    "Deployment must remain push-to-deploy through CI workflows and IaC-managed environments."
+  ],
+  "runtimeBoundaries": {
+    "apps": [
+      "apps/web",
+      "apps/api"
+    ],
+    "contractsRoot": "packages/contracts/src",
+    "adaptersRoot": "packages/adapters"
+  },
+  "ports": [
+    {
+      "id": "ai-provider",
+      "contractFile": "packages/contracts/src/ai-provider.ts",
+      "requiredAdapters": [
+        "packages/adapters/ai/openai-adapter.ts",
+        "packages/adapters/ai/anthropic-adapter.ts"
+      ],
+      "swapRule": "App and domain layers depend on AIProvider only."
+    },
+    {
+      "id": "vector-store",
+      "contractFile": "packages/contracts/src/vector-store.ts",
+      "requiredAdapters": [
+        "packages/adapters/vector/pgvector-adapter.ts",
+        "packages/adapters/vector/qdrant-adapter.ts"
+      ],
+      "swapRule": "VectorStore is selected by configuration, not by app imports."
+    },
+    {
+      "id": "collab-store",
+      "contractFile": "packages/contracts/src/collab-store.ts",
+      "requiredAdapters": [
+        "packages/adapters/collab/yjs-adapter.ts"
+      ],
+      "swapRule": "Realtime protocol details stay inside collab adapters."
+    },
+    {
+      "id": "repo-provider",
+      "contractFile": "packages/contracts/src/repo-provider.ts",
+      "requiredAdapters": [
+        "packages/adapters/repo/github-adapter.ts",
+        "packages/adapters/repo/gitlab-adapter.ts"
+      ],
+      "swapRule": "Provider APIs are abstracted by RepoProvider."
+    }
+  ],
+  "requiredPaths": [
+    "infra/terraform",
+    "migrations",
+    ".github/workflows",
+    "scripts"
+  ],
+  "driftEnforcement": {
+    "generatedDoc": "docs/architecture-canonical.md",
+    "renderScript": "scripts/render-architecture-doc.mjs",
+    "checkScript": "scripts/check-architecture-drift.mjs",
+    "workflow": ".github/workflows/architecture-drift.yml"
+  }
+}

@@ -1,0 +1,55 @@
+@import "tailwindcss";
+@source "./**/*.{ts,tsx}";
+
+:root {
+  --background: oklch(0.986 0.002 247.858);
+  --foreground: oklch(0.207 0.03 247.858);
+  --muted: oklch(0.958 0.006 247.858);
+  --muted-foreground: oklch(0.494 0.021 248.235);
+  --panel: oklch(0.992 0.004 255.56 / 0.85);
+  --border: oklch(0.91 0.01 248.29);
+  --input: oklch(0.91 0.01 248.29);
+  --ring: oklch(0.62 0.13 249.55);
+  --accent: oklch(0.7 0.15 250.04);
+  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.95 0.01 250.1);
+  --secondary-foreground: oklch(0.24 0.02 248);
+  --destructive: oklch(0.61 0.22 27.5);
+  --radius: 1.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.5rem);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  font-family: "Geist", "Inter", system-ui, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}

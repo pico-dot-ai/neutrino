@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@neutrino/ai-gateway": [
+        "packages/ai-gateway/src/index.ts"
+      ],
+      "@neutrino/contracts": [
+        "packages/contracts/src/index.ts"
+      ],
+      "@neutrino/contracts/*": [
+        "packages/contracts/src/*"
+      ],
+      "@neutrino/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@neutrino/ui/*": [
+        "packages/ui/src/*"
+      ]
+    }
+  }
+}

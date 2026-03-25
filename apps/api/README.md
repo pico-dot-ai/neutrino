@@ -1,5 +1,8 @@
 # API App
 
-Server application boundary.
-Orchestrates business logic through contract ports from `packages/contracts/src`.
-Must not directly depend on provider adapters.
+Typed HTTP service intended for Cloud Run and portable to App Runner via Docker.
+
+Rules:
+- exposes `/healthz`, `/readyz`, and `/v1/chat`
+- orchestrates AI behavior through shared packages and contract ports
+- must not import provider adapters directly

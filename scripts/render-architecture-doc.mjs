@@ -40,10 +40,21 @@ ${contract.purpose}
 ## Principles
 ${list(contract.principles)}
 
+## Standards
+- Deployment:
+  - Web: \`${contract.standards.deployment.web}\`
+  - API: \`${contract.standards.deployment.api}\`
+  - API Container: ${contract.standards.deployment.apiContainer}
+- Design System:
+  - Foundation: \`${contract.standards.designSystem.foundation}\`
+  - Shared Package: \`${contract.standards.designSystem.sharedPackage}\`
+  - Rule: ${contract.standards.designSystem.rule}
+
 ## Runtime Boundaries
 ${list(contract.runtimeBoundaries.apps)}
 - \`contractsRoot\`: \`${contract.runtimeBoundaries.contractsRoot}\`
 - \`adaptersRoot\`: \`${contract.runtimeBoundaries.adaptersRoot}\`
+${list(contract.runtimeBoundaries.sharedPackages)}
 
 ## Ports And Adapters
 ${ports}

@@ -3,7 +3,8 @@ import type {
   EmbedRequest,
   EmbedResponse,
   GenerateRequest,
-  GenerateResponse
+  GenerateResponse,
+  StreamEvent
 } from "../../contracts/src/ai-provider";
 
 export class AnthropicAdapter implements AIProvider {
@@ -12,6 +13,10 @@ export class AnthropicAdapter implements AIProvider {
   }
 
   async embed(_request: EmbedRequest): Promise<EmbedResponse> {
+    throw new Error("Not implemented.");
+  }
+
+  async *stream(_request: GenerateRequest): AsyncIterable<StreamEvent> {
     throw new Error("Not implemented.");
   }
 }

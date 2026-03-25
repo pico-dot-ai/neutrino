@@ -1,13 +1,33 @@
 # neutrino
-Concise, Readable, Insightful
 
-Neutrino is built for the age of AI + humans, turning documents into shared context both people and models can act on.
+Neutrino is an AI-first monorepo with a Vercel web client, a Cloud Run API, and contract-first adapters that keep infrastructure choices swappable.
 
-See the initial architecture and deployment decision framework:
-- `docs/architecture-foundation.md`
-- `architecture/contract.json` (single source of truth)
-- `docs/architecture-canonical.md` (generated from contract)
+## Current Baseline
+- `apps/web`: Next.js App Router frontend, intended for Vercel
+- `apps/api`: typed Node service, intended for Cloud Run and portable to App Runner
+- `packages/contracts`: stable application ports and shared request/response types
+- `packages/ui`: shared design system built on `shadcn/ui`
+- `packages/adapters`: infrastructure adapters behind contract ports
 
-Architecture governance commands:
-- `node scripts/render-architecture-doc.mjs`
-- `node scripts/check-architecture-drift.mjs`
+## Commands
+- `npm install`
+- `npm run dev:web`
+- `npm run dev:api`
+- `npm run build`
+- `npm run test`
+- `npm run typecheck`
+- `npm run architecture:render`
+- `npm run architecture:check`
+
+## Environment
+Copy `.env.example` into environment-specific files or platform secrets. The API requires:
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `API_PROXY_SHARED_SECRET`
+
+The Vercel-facing app also uses:
+- `APP_GATE_USERNAME`
+- `APP_GATE_PASSWORD`
+- `API_BASE_URL`
+
+For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).

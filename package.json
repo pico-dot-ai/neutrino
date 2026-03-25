@@ -1,0 +1,23 @@
+{
+  "name": "neutrino",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspace @neutrino/web",
+    "dev:web": "npm run dev --workspace @neutrino/web",
+    "dev:api": "npm run dev --workspace @neutrino/api",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "architecture:render": "node scripts/render-architecture-doc.mjs",
+    "architecture:check": "node scripts/check-architecture-drift.mjs"
+  }
+}

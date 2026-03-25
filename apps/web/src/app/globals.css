@@ -1,0 +1,7 @@
+@import "@neutrino/ui/styles.css";
+@source "../**/*.{ts,tsx}";
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+body {
+  min-height: 100vh;
+}

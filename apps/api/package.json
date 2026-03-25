@@ -1,0 +1,28 @@
+{
+  "name": "@neutrino/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts --format esm --target node20 --out-dir dist",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --project tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@neutrino/ai-gateway": "0.1.0",
+    "@neutrino/contracts": "0.1.0",
+    "openai": "^6.33.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "eslint": "^9.38.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

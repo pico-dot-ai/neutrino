@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts --format esm --target node20 --out-dir dist",
+    "build": "tsup --config tsup.config.ts",
     "start": "node dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc --project tsconfig.json",

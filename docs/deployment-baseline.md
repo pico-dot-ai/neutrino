@@ -26,6 +26,9 @@
   - probes
   - ingress
   - public invoker IAM
+- Terraform state for the Cloud Run module must use the shared GCS backend in [infra/terraform/cloud-run/backend.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/backend.tf):
+  - bucket: `neutrino-terraform-state`
+  - prefix: `cloud-run/prod`
 - Cloud Build is not the place to create or hand-configure runtime env vars anymore. It should only roll the image forward on an existing service.
 - Provide secrets in Secret Manager for:
   - `OPENAI_API_KEY`
@@ -33,6 +36,13 @@
 - Apply Terraform once before using the Cloud Build trigger continuously.
 - If the service already exists, import it into Terraform state first instead of recreating it.
 - Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/terraform.tfvars.example) as the starting point for variables.
+- One-time backend bootstrap and migration flow:
+  - create the GCS bucket `neutrino-terraform-state` in project `neutrino-491317`
+  - enable uniform bucket-level access, public access prevention, and versioning
+  - grant bucket object read/write access to each operator or CI identity that will run Terraform
+  - run `terraform init -migrate-state` from [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run)
+  - verify the migrated state object exists under `gs://neutrino-terraform-state/cloud-run/prod`
+  - after migration, treat the GCS backend as canonical and do not rely on local state files
 - Cloud Build trigger substitutions should be plain values, not nested image strings. Use:
   - `_AR_HOSTNAME=us-central1-docker.pkg.dev`
   - `_AR_REPOSITORY=cloud-run-source-deploy`

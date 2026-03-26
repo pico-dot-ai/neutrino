@@ -7,3 +7,7 @@ api_proxy_secret_name       = "API_PROXY_SHARED_SECRET"
 runtime_service_account_email = "695331385631-compute@developer.gserviceaccount.com"
 allow_public_invoker        = false
 invoker_iam_disabled        = true
+
+# Terraform backend defaults are committed in backend.tf:
+# - bucket = "neutrino-terraform-state"
+# - prefix = "cloud-run/prod"

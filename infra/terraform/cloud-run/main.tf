@@ -15,12 +15,12 @@ provider "google" {
 }
 
 resource "google_cloud_run_v2_service" "api" {
-  name                  = var.service_name
-  location              = var.region
-  ingress               = var.ingress
-  deletion_protection   = var.deletion_protection
-  invoker_iam_disabled  = var.invoker_iam_disabled
-  client                = "terraform"
+  name                 = var.service_name
+  location             = var.region
+  ingress              = var.ingress
+  deletion_protection  = var.deletion_protection
+  invoker_iam_disabled = var.invoker_iam_disabled
+  client               = "terraform"
 
   template {
     service_account                  = var.runtime_service_account_email

@@ -14,3 +14,8 @@ The API container is designed to stay portable to App Runner by keeping the runt
 Terraform state for live infrastructure must use the shared GCS backend configured in
 [`cloud-run/backend.tf`](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/backend.tf).
 Do not rely on local `terraform.tfstate` for the Cloud Run module after migration.
+
+When running Terraform from Codex, provider-backed commands such as `terraform validate`,
+`terraform plan`, and `terraform apply` may need unsandboxed execution. The Google provider
+opens a local Unix socket for its plugin handshake, and the sandbox can block that bind with
+`operation not permitted`.

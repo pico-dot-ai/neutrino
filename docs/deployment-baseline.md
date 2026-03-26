@@ -43,6 +43,9 @@
   - run `terraform init -migrate-state` from [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run)
   - verify the migrated state object exists under `gs://neutrino-terraform-state/cloud-run/prod`
   - after migration, treat the GCS backend as canonical and do not rely on local state files
+- When running Terraform from Codex, provider-backed commands such as `terraform validate`,
+  `terraform plan`, and `terraform apply` may require unsandboxed execution because the Google
+  provider uses a local Unix socket for its plugin handshake.
 - Cloud Build trigger substitutions should be plain values, not nested image strings. Use:
   - `_AR_HOSTNAME=us-central1-docker.pkg.dev`
   - `_AR_REPOSITORY=cloud-run-source-deploy`

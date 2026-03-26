@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.5.7"
 
   required_providers {
     google = {
@@ -15,10 +15,12 @@ provider "google" {
 }
 
 resource "google_cloud_run_v2_service" "api" {
-  name     = var.service_name
-  location = var.region
-  ingress  = var.ingress
-  deletion_protection = false
+  name                  = var.service_name
+  location              = var.region
+  ingress               = var.ingress
+  deletion_protection   = var.deletion_protection
+  invoker_iam_disabled  = var.invoker_iam_disabled
+  client                = "terraform"
 
   template {
     service_account                  = var.runtime_service_account_email
@@ -27,11 +29,7 @@ resource "google_cloud_run_v2_service" "api" {
 
     containers {
       image = var.container_image
-
-      env {
-        name  = "PORT"
-        value = "8080"
-      }
+      name  = var.container_name
 
       env {
         name = "OPENAI_API_KEY"
@@ -43,9 +41,12 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
-      env {
-        name  = "OPENAI_MODEL"
-        value = var.openai_model
+      dynamic "env" {
+        for_each = var.openai_model == null ? [] : [var.openai_model]
+        content {
+          name  = "OPENAI_MODEL"
+          value = env.value
+        }
       }
 
       env {
@@ -63,22 +64,18 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       startup_probe {
-        http_get {
-          path = var.startup_probe_path
+        tcp_socket {
+          port = 8080
         }
         initial_delay_seconds = var.startup_probe_initial_delay_seconds
         period_seconds        = var.startup_probe_period_seconds
-      }
-
-      liveness_probe {
-        http_get {
-          path = var.liveness_probe_path
-        }
-        initial_delay_seconds = var.liveness_probe_initial_delay_seconds
-        period_seconds        = var.liveness_probe_period_seconds
+        timeout_seconds       = var.startup_probe_timeout_seconds
+        failure_threshold     = var.startup_probe_failure_threshold
       }
 
       resources {
+        cpu_idle          = var.cpu_idle
+        startup_cpu_boost = var.startup_cpu_boost
         limits = {
           cpu    = var.cpu_limit
           memory = var.memory_limit
@@ -93,12 +90,15 @@ resource "google_cloud_run_v2_service" "api" {
   }
 
   lifecycle {
-    ignore_changes = [template[0].containers[0].image]
+    ignore_changes = [
+      template[0].containers[0].image,
+      client
+    ]
   }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  count    = var.allow_public_invoker ? 1 : 0
+  count    = var.allow_public_invoker && !var.invoker_iam_disabled ? 1 : 0
   location = google_cloud_run_v2_service.api.location
   name     = google_cloud_run_v2_service.api.name
   role     = "roles/run.invoker"

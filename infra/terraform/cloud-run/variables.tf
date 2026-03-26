@@ -12,6 +12,16 @@ variable "ingress" {
   default = "INGRESS_TRAFFIC_ALL"
 }
 
+variable "deletion_protection" {
+  type    = bool
+  default = true
+}
+
+variable "invoker_iam_disabled" {
+  type    = bool
+  default = true
+}
+
 variable "service_name" {
   type    = string
   default = "neutrino-api"
@@ -19,7 +29,7 @@ variable "service_name" {
 
 variable "runtime_service_account_email" {
   type    = string
-  default = null
+  default = "695331385631-compute@developer.gserviceaccount.com"
 }
 
 variable "container_image" {
@@ -36,12 +46,17 @@ variable "api_proxy_secret_name" {
 
 variable "openai_model" {
   type    = string
-  default = "gpt-5-mini"
+  default = null
 }
 
 variable "allow_public_invoker" {
   type    = bool
-  default = true
+  default = false
+}
+
+variable "container_name" {
+  type    = string
+  default = "placeholder-1"
 }
 
 variable "timeout_seconds" {
@@ -51,7 +66,7 @@ variable "timeout_seconds" {
 
 variable "max_instance_request_concurrency" {
   type    = number
-  default = 40
+  default = 80
 }
 
 variable "min_instance_count" {
@@ -61,12 +76,12 @@ variable "min_instance_count" {
 
 variable "max_instance_count" {
   type    = number
-  default = 4
+  default = 3
 }
 
 variable "cpu_limit" {
   type    = string
-  default = "1"
+  default = "1000m"
 }
 
 variable "memory_limit" {
@@ -74,32 +89,32 @@ variable "memory_limit" {
   default = "512Mi"
 }
 
-variable "startup_probe_path" {
-  type    = string
-  default = "/readyz"
+variable "cpu_idle" {
+  type    = bool
+  default = true
 }
 
-variable "startup_probe_initial_delay_seconds" {
-  type    = number
-  default = 2
+variable "startup_cpu_boost" {
+  type    = bool
+  default = true
 }
 
 variable "startup_probe_period_seconds" {
   type    = number
-  default = 10
+  default = 240
 }
 
-variable "liveness_probe_path" {
-  type    = string
-  default = "/healthz"
-}
-
-variable "liveness_probe_initial_delay_seconds" {
+variable "startup_probe_timeout_seconds" {
   type    = number
-  default = 10
+  default = 240
 }
 
-variable "liveness_probe_period_seconds" {
+variable "startup_probe_failure_threshold" {
   type    = number
-  default = 20
+  default = 1
+}
+
+variable "startup_probe_initial_delay_seconds" {
+  type    = number
+  default = 0
 }

@@ -18,6 +18,12 @@
 - Provide secrets for:
   - `OPENAI_API_KEY`
   - `API_PROXY_SHARED_SECRET`
+- Cloud Build trigger substitutions should be plain values, not nested image strings. Use:
+  - `_AR_HOSTNAME=us-central1-docker.pkg.dev`
+  - `_AR_REPOSITORY=cloud-run-source-deploy`
+  - `_IMAGE_NAME=neutrino-api`
+  - `_SERVICE_NAME=neutrino-api`
+  - `_DEPLOY_REGION=us-central1`
 
 ## OpenAI Key Location
 - Use the standard `OPENAI_API_KEY` environment variable.

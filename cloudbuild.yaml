@@ -5,7 +5,7 @@ steps:
       - -f
       - apps/api/Dockerfile
       - -t
-      - ${_IMAGE_URI}
+      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
       - .
   - name: gcr.io/cloud-builders/gcloud
     args:
@@ -13,9 +13,9 @@ steps:
       - deploy
       - ${_SERVICE_NAME}
       - --image
-      - ${_IMAGE_URI}
+      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
       - --region
-      - ${_REGION}
+      - ${_DEPLOY_REGION}
       - --platform
       - managed
       - --allow-unauthenticated
@@ -24,4 +24,4 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 images:
-  - ${_IMAGE_URI}
+  - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}

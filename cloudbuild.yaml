@@ -14,15 +14,28 @@ steps:
   - name: gcr.io/cloud-builders/gcloud
     args:
       - run
-      - deploy
+      - services
+      - update
       - ${_SERVICE_NAME}
-      - --image
-      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
       - --region
       - ${_DEPLOY_REGION}
-      - --platform
-      - managed
-      - --allow-unauthenticated
+      - --image
+      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        gcloud run services describe "${_SERVICE_NAME}" \
+          --region "${_DEPLOY_REGION}" \
+          --format='value(status.url)' > /workspace/service_url.txt
+  - name: curlimages/curl:8.12.1
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        SERVICE_URL="$(cat /workspace/service_url.txt)"
+        curl -fsS "${SERVICE_URL}/healthz"
 
 options:
   logging: CLOUD_LOGGING_ONLY

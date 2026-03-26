@@ -20,7 +20,7 @@ Neutrino is an AI-first monorepo with a Vercel web client, a Cloud Run API, and 
 - `npm run architecture:check`
 
 ## Environment
-Copy `.env.example` into environment-specific files or platform secrets. The API requires:
+The API requires:
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - `API_PROXY_SHARED_SECRET`
@@ -31,3 +31,8 @@ The Vercel-facing app also uses:
 - `API_BASE_URL`
 
 For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).
+
+## Deployment
+- Cloud Build is the canonical API image rollout path.
+- Terraform under [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run) is the source of truth for the Cloud Run runtime contract.
+- Do not hand-configure Cloud Run env var names in the UI for normal operation.

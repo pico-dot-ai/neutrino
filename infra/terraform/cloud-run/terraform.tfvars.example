@@ -1,0 +1,8 @@
+project_id                  = "your-gcp-project-id"
+region                      = "us-central1"
+service_name                = "neutrino-api"
+container_image             = "us-central1-docker.pkg.dev/your-gcp-project-id/cloud-run-source-deploy/neutrino-api:bootstrap"
+openai_api_key_secret_name  = "OPENAI_API_KEY"
+api_proxy_secret_name       = "API_PROXY_SHARED_SECRET"
+runtime_service_account_email = null
+allow_public_invoker        = true

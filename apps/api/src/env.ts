@@ -10,5 +10,21 @@ const envSchema = z.object({
 export type ApiEnv = z.infer<typeof envSchema>;
 
 export function loadEnv(env: NodeJS.ProcessEnv = process.env): ApiEnv {
-  return envSchema.parse(env);
+  const parsed = envSchema.safeParse(env);
+
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  const missingVariables = parsed.error.issues
+    .filter((issue) => issue.code === "invalid_type" && issue.path.length === 1)
+    .map((issue) => String(issue.path[0]));
+
+  if (missingVariables.length > 0) {
+    console.error(
+      `Missing required environment variables: ${missingVariables.join(", ")}`
+    );
+  }
+
+  throw parsed.error;
 }

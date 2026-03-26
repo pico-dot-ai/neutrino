@@ -17,11 +17,13 @@ provider "google" {
 resource "google_cloud_run_v2_service" "api" {
   name     = var.service_name
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  ingress  = var.ingress
+  deletion_protection = false
 
   template {
-    timeout                          = "300s"
-    max_instance_request_concurrency = 40
+    service_account                  = var.runtime_service_account_email
+    timeout                          = "${var.timeout_seconds}s"
+    max_instance_request_concurrency = var.max_instance_request_concurrency
 
     containers {
       image = var.container_image
@@ -62,36 +64,41 @@ resource "google_cloud_run_v2_service" "api" {
 
       startup_probe {
         http_get {
-          path = "/readyz"
+          path = var.startup_probe_path
         }
-        initial_delay_seconds = 2
-        period_seconds        = 10
+        initial_delay_seconds = var.startup_probe_initial_delay_seconds
+        period_seconds        = var.startup_probe_period_seconds
       }
 
       liveness_probe {
         http_get {
-          path = "/healthz"
+          path = var.liveness_probe_path
         }
-        initial_delay_seconds = 10
-        period_seconds        = 20
+        initial_delay_seconds = var.liveness_probe_initial_delay_seconds
+        period_seconds        = var.liveness_probe_period_seconds
       }
 
       resources {
         limits = {
-          cpu    = "1"
-          memory = "512Mi"
+          cpu    = var.cpu_limit
+          memory = var.memory_limit
         }
       }
     }
 
     scaling {
-      min_instance_count = 0
-      max_instance_count = 4
+      min_instance_count = var.min_instance_count
+      max_instance_count = var.max_instance_count
     }
+  }
+
+  lifecycle {
+    ignore_changes = [template[0].containers[0].image]
   }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  count    = var.allow_public_invoker ? 1 : 0
   location = google_cloud_run_v2_service.api.location
   name     = google_cloud_run_v2_service.api.name
   role     = "roles/run.invoker"

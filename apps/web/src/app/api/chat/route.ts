@@ -17,7 +17,8 @@ export async function POST(request: Request) {
   try {
     const serverEnv = getServerEnv();
     const payload = requestSchema.parse(await request.json());
-    const upstream = await fetch(`${serverEnv.API_BASE_URL}/v1/chat`, {
+    const upstreamUrl = `${serverEnv.API_BASE_URL}/v1/chat`;
+    const upstream = await fetch(upstreamUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -28,8 +29,16 @@ export async function POST(request: Request) {
 
     if (!upstream.ok || !upstream.body) {
       const errorText = await upstream.text();
+      const isHtml404 =
+        upstream.status === 404 &&
+        upstream.headers.get("content-type")?.includes("text/html");
+
       return NextResponse.json(
-        { error: errorText || "Unable to reach the API service." },
+        {
+          error: isHtml404
+            ? `Cloud Run returned 404 for ${upstreamUrl}. Set API_BASE_URL to the root Cloud Run service URL only, for example https://your-service-xxxxx-uc.a.run.app`
+            : errorText || "Unable to reach the API service."
+        },
         { status: upstream.status || 502 }
       );
     }

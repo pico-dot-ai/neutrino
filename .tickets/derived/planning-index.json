@@ -1,0 +1,344 @@
+{
+  "index_format_id": "0195a1b7-4a17-7c2e-8db2-4d5cb0f0d642",
+  "index_format_label": "planning-index-2026-03-17",
+  "tool": {
+    "format_version": 3,
+    "format_version_url": "version/20260317-4-tickets-spec.md"
+  },
+  "source_state": {
+    "config_fingerprint": "1774562169293:971",
+    "ticket_count": 6,
+    "tickets": [
+      {
+        "id": "019d2c58-0889-737b-8ac4-b3b85fc84f60",
+        "ticket_path": ".tickets/019d2c58-0889-737b-8ac4-b3b85fc84f60/ticket.md",
+        "ticket_signature": "1774565460108:614",
+        "log_count": 0,
+        "logs": []
+      },
+      {
+        "id": "019d2c58-42f7-744e-8efd-8d2de4d9bd42",
+        "ticket_path": ".tickets/019d2c58-42f7-744e-8efd-8d2de4d9bd42/ticket.md",
+        "ticket_signature": "1774565475067:660",
+        "log_count": 0,
+        "logs": []
+      },
+      {
+        "id": "019d2c58-42f7-7742-b6a6-cee4cffd955c",
+        "ticket_path": ".tickets/019d2c58-42f7-7742-b6a6-cee4cffd955c/ticket.md",
+        "ticket_signature": "1774565475067:660",
+        "log_count": 0,
+        "logs": []
+      },
+      {
+        "id": "019d2c58-4306-7538-8871-69b3270438a5",
+        "ticket_path": ".tickets/019d2c58-4306-7538-8871-69b3270438a5/ticket.md",
+        "ticket_signature": "1774565475081:664",
+        "log_count": 0,
+        "logs": []
+      },
+      {
+        "id": "019d2c58-430b-7650-9eab-7d490c1a87ed",
+        "ticket_path": ".tickets/019d2c58-430b-7650-9eab-7d490c1a87ed/ticket.md",
+        "ticket_signature": "1774565475088:649",
+        "log_count": 0,
+        "logs": []
+      },
+      {
+        "id": "019d2c58-430d-778f-aa37-bbd515af347a",
+        "ticket_path": ".tickets/019d2c58-430d-778f-aa37-bbd515af347a/ticket.md",
+        "ticket_signature": "1774565475091:661",
+        "log_count": 0,
+        "logs": []
+      }
+    ]
+  },
+  "profile": {
+    "workflow": {
+      "mode": "auto"
+    },
+    "defaults": {
+      "planning": {
+        "node_type": "work",
+        "lane": null,
+        "horizon": null
+      },
+      "claims": {
+        "ttl_minutes": 60
+      }
+    },
+    "semantics": {
+      "terms": {
+        "feature": {
+          "field": "planning.node_type",
+          "value": "group",
+          "description": "A feature is modeled as a group node containing related work."
+        },
+        "phase": {
+          "field": "planning.lane",
+          "description": "A phase is modeled as a lane value that orders work at a coarse level."
+        },
+        "milestone": {
+          "field": "planning.node_type",
+          "value": "checkpoint",
+          "description": "A milestone is modeled as a checkpoint node with derived completion."
+        },
+        "roadmap": {
+          "field": "planning.horizon",
+          "description": "A roadmap is modeled as a horizon value across groups and checkpoints."
+        }
+      }
+    },
+    "views": {
+      "plan": {
+        "sort_by": [
+          "planning.lane",
+          "planning.rank",
+          "priority"
+        ]
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "019d2c58-0889-737b-8ac4-b3b85fc84f60",
+      "title": "Complete Terraform Coverage for Deployment Infrastructure",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-0889-737b-8ac4-b3b85fc84f60/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "group",
+        "group_ids": [],
+        "lane": "infra",
+        "rank": 1,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": {
+        "total_leaf": 5,
+        "active_leaf": 5,
+        "todo": 5,
+        "doing": 0,
+        "blocked": 0,
+        "done_completed": 0,
+        "merged": 0,
+        "dropped": 0,
+        "percent_complete": 0
+      },
+      "ready": false,
+      "claim_summary": ""
+    },
+    {
+      "id": "019d2c58-42f7-744e-8efd-8d2de4d9bd42",
+      "title": "Define Terraform ownership for build and registry infrastructure",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-42f7-744e-8efd-8d2de4d9bd42/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "work",
+        "group_ids": [
+          "019d2c58-0889-737b-8ac4-b3b85fc84f60"
+        ],
+        "lane": "infra",
+        "rank": 3,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": null,
+      "ready": true,
+      "claim_summary": ""
+    },
+    {
+      "id": "019d2c58-42f7-7742-b6a6-cee4cffd955c",
+      "title": "Expand Cloud Run Terraform coverage for service and IAM contract",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-42f7-7742-b6a6-cee4cffd955c/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "work",
+        "group_ids": [
+          "019d2c58-0889-737b-8ac4-b3b85fc84f60"
+        ],
+        "lane": "infra",
+        "rank": 2,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": null,
+      "ready": true,
+      "claim_summary": ""
+    },
+    {
+      "id": "019d2c58-4306-7538-8871-69b3270438a5",
+      "title": "Add verification flow for Terraform validate, plan, and import paths",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-4306-7538-8871-69b3270438a5/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "work",
+        "group_ids": [
+          "019d2c58-0889-737b-8ac4-b3b85fc84f60"
+        ],
+        "lane": "infra",
+        "rank": 5,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": null,
+      "ready": true,
+      "claim_summary": ""
+    },
+    {
+      "id": "019d2c58-430b-7650-9eab-7d490c1a87ed",
+      "title": "Bootstrap remote state and backend migration workflow",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-430b-7650-9eab-7d490c1a87ed/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "work",
+        "group_ids": [
+          "019d2c58-0889-737b-8ac4-b3b85fc84f60"
+        ],
+        "lane": "infra",
+        "rank": 1,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": null,
+      "ready": true,
+      "claim_summary": ""
+    },
+    {
+      "id": "019d2c58-430d-778f-aa37-bbd515af347a",
+      "title": "Formalize secrets, variables, and operator runbooks for Terraform",
+      "status": "todo",
+      "priority": "",
+      "owner": null,
+      "mode": null,
+      "labels": [
+        "infra",
+        "terraform"
+      ],
+      "body": "# Ticket\n\n> Before starting: read `TICKETS.md` (canonical workflow) and confirm you understand how to use this ticketing system.\n\n## Description\n(fill in)\n\n## Acceptance Criteria\n- [ ] Define clear, checkable outcomes.\n\n## Verification\n- (add commands or steps)\n",
+      "path": "/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/.tickets/019d2c58-430d-778f-aa37-bbd515af347a/ticket.md",
+      "dependencies": [],
+      "blocks": [],
+      "related": [],
+      "planning": {
+        "node_type": "work",
+        "group_ids": [
+          "019d2c58-0889-737b-8ac4-b3b85fc84f60"
+        ],
+        "lane": "infra",
+        "rank": 4,
+        "horizon": "later",
+        "precedes": []
+      },
+      "resolution": null,
+      "active_claim": null,
+      "last_updated": "",
+      "blocked_by": {
+        "dependencies": [],
+        "predecessors": []
+      },
+      "rollup": null,
+      "ready": true,
+      "claim_summary": ""
+    }
+  ],
+  "predecessors_by_id": {},
+  "members_by_group": {
+    "019d2c58-0889-737b-8ac4-b3b85fc84f60": [
+      "019d2c58-42f7-744e-8efd-8d2de4d9bd42",
+      "019d2c58-42f7-7742-b6a6-cee4cffd955c",
+      "019d2c58-4306-7538-8871-69b3270438a5",
+      "019d2c58-430b-7650-9eab-7d490c1a87ed",
+      "019d2c58-430d-778f-aa37-bbd515af347a"
+    ]
+  }
+}

@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsup --config tsup.config.ts",
     "start": "node dist/server.js",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js,.mjs",
     "typecheck": "tsc --project tsconfig.json",
     "test": "vitest run"
   },

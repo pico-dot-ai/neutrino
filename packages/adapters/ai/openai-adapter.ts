@@ -8,7 +8,7 @@ import type {
 } from "../../contracts/src/ai-provider";
 import OpenAI from "openai";
 
-export class OpenAIAdapter implements AIProvider {
+class OpenAIAdapter implements AIProvider {
   constructor(private readonly client: OpenAI) {}
 
   async generate(request: GenerateRequest): Promise<GenerateResponse> {
@@ -59,3 +59,6 @@ export class OpenAIAdapter implements AIProvider {
     }
   }
 }
+
+export { OpenAIAdapter };
+export default OpenAIAdapter;

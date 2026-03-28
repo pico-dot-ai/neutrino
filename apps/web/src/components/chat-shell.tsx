@@ -1,35 +1,39 @@
 "use client";
 
-import React, { useState } from "react";
-import type { ChatMessage } from "@neutrino/contracts";
-import { Button, ScrollArea, Textarea, cn, proseClassName } from "@neutrino/ui";
-import { ArrowUp, Sparkles } from "lucide-react";
+import React from "react";
+import { Sheet, SheetContent, SheetOverlay } from "@neutrino/ui";
 import { consumeChatStream } from "@/lib/chat-stream";
+import { ChatSidebar } from "./chat-sidebar";
+import { ComposerDock } from "./composer-dock";
+import { ConversationHeader } from "./conversation-header";
+import {
+  createInitialMessages,
+  starterPrompts,
+  type LocalMessage
+} from "./chat-shell.types";
+import { MessageThread } from "./message-thread";
 
-type LocalMessage = ChatMessage & {
-  id: string;
-  state?: "streaming" | "complete";
-};
+function deriveTitle(messages: LocalMessage[]) {
+  const firstUserMessage = messages.find((message) => message.role === "user");
 
-const starterPrompts = [
-  "Summarize the Neutrino architecture in one paragraph.",
-  "Write a brief product positioning statement for Neutrino.",
-  "Explain how the web and API apps are separated in this repo."
-];
+  if (!firstUserMessage) {
+    return "New chat";
+  }
+
+  return firstUserMessage.content.slice(0, 48) || "New chat";
+}
 
 export function ChatShell() {
-  const [messages, setMessages] = useState<LocalMessage[]>([
-    {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content:
-        "Neutrino is ready. Ask the Cloud Run API something to verify the full web-to-backend path.",
-      state: "complete"
-    }
-  ]);
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = React.useState<LocalMessage[]>(() => createInitialMessages());
+  const [draft, setDraft] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = React.useState(false);
+  const [isSending, setIsSending] = React.useState(false);
+  const messagesRef = React.useRef(messages);
+
+  React.useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   async function submit(prompt: string) {
     const trimmedPrompt = prompt.trim();
@@ -45,6 +49,10 @@ export function ChatShell() {
       content: trimmedPrompt
     };
     const assistantMessageId = crypto.randomUUID();
+    const requestMessages = [
+      ...messagesRef.current.map(({ role, content }) => ({ role, content })),
+      { role: userMessage.role, content: userMessage.content }
+    ];
 
     setMessages((current) => [
       ...current,
@@ -58,6 +66,7 @@ export function ChatShell() {
     ]);
     setDraft("");
     setIsSending(true);
+    setIsMobileNavOpen(false);
 
     try {
       const response = await fetch("/api/chat", {
@@ -66,10 +75,7 @@ export function ChatShell() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(({ role, content }) => ({
-            role,
-            content
-          }))
+          messages: requestMessages
         })
       });
 
@@ -130,117 +136,58 @@ export function ChatShell() {
     }
   }
 
+  function handleNewChat() {
+    setMessages(createInitialMessages());
+    setDraft("");
+    setError(null);
+    setIsMobileNavOpen(false);
+  }
+
+  const title = deriveTitle(messages);
+
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(140,184,255,0.14),_transparent_30%),linear-gradient(180deg,_var(--background),_var(--muted))] text-foreground">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-6 pt-4 sm:px-6 lg:px-8">
-        <header className="border-border/80 flex items-center justify-between border-b pb-4">
-          <div>
-            <p className="text-muted-foreground text-sm uppercase tracking-[0.24em]">
-              Neutrino
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-              Contract-first AI chat
-            </h1>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Frontend on Vercel</p>
-            <p className="text-sm text-muted-foreground">Backend on Cloud Run</p>
-          </div>
-        </header>
-
-        <div className="grid flex-1 gap-6 py-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <aside className="hidden rounded-3xl border border-border/60 bg-panel/70 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur lg:block">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-accent/20 p-2 text-accent-foreground">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium">Shared design system</p>
-                <p className="text-sm text-muted-foreground">
-                  `shadcn/ui` foundation with repo-owned tokens.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 space-y-3">
-              <p className="text-sm font-medium">Try a prompt</p>
-              {starterPrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  className="bg-background hover:bg-background/70 w-full rounded-2xl border border-border/70 px-4 py-3 text-left text-sm text-muted-foreground transition"
-                  onClick={() => submit(prompt)}
-                  type="button"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </aside>
-
-          <section className="flex min-h-[70vh] flex-col rounded-[2rem] border border-border/60 bg-panel/75 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-            <ScrollArea className="flex-1 px-4 py-5 sm:px-6">
-              <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-                {messages.map((message) => {
-                  const isAssistant = message.role === "assistant";
-
-                  return (
-                    <article
-                      className={cn(
-                        "max-w-[85%] rounded-3xl px-5 py-4 shadow-[0_10px_25px_rgba(15,23,42,0.05)]",
-                        isAssistant
-                          ? "self-start bg-background border border-border/70"
-                          : "self-end bg-accent text-accent-foreground"
-                      )}
-                      key={message.id}
-                    >
-                      <p className="mb-2 text-xs font-medium uppercase tracking-[0.24em] opacity-70">
-                        {message.role}
-                      </p>
-                      <div className={proseClassName}>{message.content || "Thinking…"}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-
-            <div className="border-border/70 border-t px-4 py-4 sm:px-6">
-              <form
-                className="mx-auto flex w-full max-w-3xl flex-col gap-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submit(draft);
-                }}
-              >
-                <div className="bg-background relative rounded-[1.75rem] border border-border/70 p-3 shadow-[0_14px_40px_rgba(15,23,42,0.06)]">
-                  <Textarea
-                    className="min-h-28 resize-none border-0 bg-transparent px-2 py-2 text-base shadow-none focus-visible:ring-0"
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        void submit(draft);
-                      }
-                    }}
-                    placeholder="Message Neutrino"
-                    value={draft}
-                  />
-                  <div className="flex items-center justify-between px-2 pt-3">
-                    <p className="text-sm text-muted-foreground">
-                      Enter to send. Shift+Enter for a new line.
-                    </p>
-                    <Button disabled={isSending || !draft.trim()} size="icon" type="submit">
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {error ? <p className="text-sm text-destructive">{error}</p> : null}
-              </form>
-            </div>
-          </section>
-        </div>
+    <main className="flex h-screen overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(244,246,248,0.96))] text-foreground">
+      <div className="hidden h-screen w-[17.5rem] shrink-0 border-r border-border/80 md:block">
+        <ChatSidebar
+          className="sticky top-0 h-screen"
+          isSending={isSending}
+          onNewChat={handleNewChat}
+          onPromptSelect={(prompt) => void submit(prompt)}
+          starterPrompts={starterPrompts}
+        />
       </div>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <ConversationHeader
+          isSending={isSending}
+          onOpenSidebar={() => setIsMobileNavOpen(true)}
+          title={title}
+        />
+        <MessageThread messages={messages} />
+        <ComposerDock
+          draft={draft}
+          error={error}
+          isSending={isSending}
+          onChange={setDraft}
+          onSubmit={() => void submit(draft)}
+        />
+      </div>
+
+      <Sheet onOpenChange={setIsMobileNavOpen} open={isMobileNavOpen}>
+        <SheetOverlay className="md:hidden" />
+        <SheetContent
+          aria-label="Mobile navigation"
+          className="md:hidden"
+          side="left"
+        >
+          <ChatSidebar
+            isSending={isSending}
+            onNewChat={handleNewChat}
+            onPromptSelect={(prompt) => void submit(prompt)}
+            starterPrompts={starterPrompts}
+          />
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }

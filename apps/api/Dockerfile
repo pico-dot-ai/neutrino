@@ -7,6 +7,7 @@ COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/ai-gateway/package.json packages/ai-gateway/package.json
+COPY packages/adapters/package.json packages/adapters/package.json
 
 RUN npm install
 

@@ -19,8 +19,5 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "architecture:render": "node scripts/render-architecture-doc.mjs",
     "architecture:check": "node scripts/check-architecture-drift.mjs"
-  },
-  "dependencies": {
-    "@picoai/tickets": "^0.5.0"
   }
 }

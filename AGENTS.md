@@ -25,3 +25,9 @@
 - Maintain `/healthz` and `/readyz` endpoints for deployable services.
 - Add or update tests for behavior changes when the surface is stable enough to test.
 - Avoid over-engineering. Shipping a narrow, well-factored slice is better than building for hypothetical future breadth.
+
+## Browser Verification Policy
+- For web implementation review, use the Codex in-app browser (IAB) by default.
+- Do not use Playwright for visual verification unless the user explicitly asks for Playwright.
+- If IAB is unavailable or blocked, use the system default browser as the fallback.
+- Keep browser checks scoped to the target route/state and report what was verified.

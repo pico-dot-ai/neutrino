@@ -12,6 +12,15 @@
 - Infrastructure-specific behavior belongs in deployment/config layers, not in feature code.
 - The API runtime must stay stateless and container-portable across Cloud Run and App Runner.
 
+## Notion Collaboration Rules
+- When the user asks about Notion documents or anything related to Notion, use the Notion connector. Only skip the connector when "notion" is plainly used as a generic English word rather than the product.
+- The `Pico Agent Redux` Notion page is the collaborative product-direction workspace.
+- `Product Vision Capture` is for human-facing product concept, product layers, MVP shape, and broad service needs. Treat it as fluid planning input, not repo ground truth.
+- `Codex Repo Sync` is for agent-to-agent context exchange between Codex and ChatGPT. Treat it as a dated synchronization brief, but re-verify implementation facts from the repo before making code or architecture claims.
+- Notion pages do not replace in-repo coding-agent documentation. Repo files remain authoritative for implementation, runtime contracts, validation, and current system behavior.
+- When Notion direction becomes accepted, align repo documentation deliberately: update `docs/requirements-baseline.md` for requirements, update `architecture/contract.json` first for architecture-affecting changes, regenerate `docs/architecture-canonical.md`, and update other docs only where their ownership applies.
+- Keep a clear distinction between product direction in Notion, accepted architecture in repo docs, and implemented behavior in code.
+
 ## Frontend Design System Rules
 - `shadcn/ui` is the required component foundation for the project.
 - Frontend work must use the shared design-system package and its tokens, primitives, and wrappers.

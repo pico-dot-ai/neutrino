@@ -1,15 +1,20 @@
 # Neutrino Requirements Baseline
 
 ## Purpose
-This document establishes the initial requirements baseline for Neutrino.
-It is intended to support product scoping, ticket creation, and architecture decisions without treating every early idea as a locked commitment.
+This document is the single source for Neutrino requirement statements and requirement status.
+It supports product scoping, ticket creation, and architecture decision input without treating every early idea as a locked commitment.
 
 Use this document to separate:
 - confirmed requirements that already follow from the current repo contract
 - proposed requirements that appear to be part of the current product direction
 - open questions that still need an explicit product decision
 
-`architecture/contract.json` remains the canonical source for architecture boundaries.
+Related architecture documents:
+- Canonical architecture contract: `architecture/contract.json`
+- Generated architecture view: `docs/architecture-canonical.md`
+- Architecture rationale and decision history: `docs/architecture-foundation.md`
+
+Requirement statements and statuses must be maintained here, not in architecture rationale docs.
 
 ## Source Inputs
 - `README.md`
@@ -26,6 +31,10 @@ Use this document to separate:
 
 ## Product Goal
 Build an AI-first product in a monorepo that can ship quickly now while preserving the ability to swap infrastructure providers later through contract-first boundaries.
+
+## Scope Note
+This file owns requirement definitions, statuses, explicit constraints, and open requirement questions.
+Architecture rationale and historical context belong in `docs/architecture-foundation.md`.
 
 ## Confirmed Requirements
 

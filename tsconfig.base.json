@@ -28,6 +28,12 @@
       "@neutrino/contracts/*": [
         "packages/contracts/src/*"
       ],
+      "@neutrino/identity-gateway": [
+        "packages/identity-gateway/src/index.ts"
+      ],
+      "@neutrino/platform-gateway": [
+        "packages/platform-gateway/src/index.ts"
+      ],
       "@neutrino/ui": [
         "packages/ui/src/index.ts"
       ],

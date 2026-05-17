@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { Readable } from "node:stream";
 import { z } from "zod";
 import type { AIProvider, ChatMessage } from "@neutrino/contracts";
+import { createPlatformControlPlane } from "@neutrino/platform-gateway";
 import type { ApiEnv } from "./env";
 
 const chatRequestSchema = z.object({
@@ -13,6 +14,49 @@ const chatRequestSchema = z.object({
       })
     )
     .min(1)
+});
+
+const registerOAuthAppSchema = z.object({
+  displayName: z.string().min(1),
+  description: z.string().optional(),
+  appType: z.enum(["consumer", "provider", "both"]),
+  ownerOrgId: z.string().min(1),
+  redirectUris: z.array(z.string().url()).optional(),
+  allowedScopes: z.array(z.string().min(1)).optional()
+});
+
+const updateOAuthAppSchema = z.object({
+  pico_app_id: z.string().min(1),
+  displayName: z.string().min(1).optional(),
+  description: z.string().optional(),
+  appType: z.enum(["consumer", "provider", "both"]).optional(),
+  redirectUris: z.array(z.string().url()).optional(),
+  allowedScopes: z.array(z.string().min(1)).optional()
+});
+
+const picoAppTargetSchema = z.object({
+  pico_app_id: z.string().min(1)
+});
+
+const assignAppAdminSchema = z.object({
+  pico_app_id: z.string().min(1),
+  email: z.string().email()
+});
+
+const registerCapabilitySchema = z.object({
+  name: z.string().min(1),
+  version: z.string().min(1),
+  ownerPicoAppId: z.string().min(1),
+  description: z.string().optional(),
+  scopes: z.array(z.string().min(1)).optional(),
+  limits: z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .optional()
+});
+
+const capabilityIdSchema = z.object({
+  capabilityId: z.string().min(1),
+  eolAt: z.string().datetime().optional()
 });
 
 function json(status: number, payload: unknown) {
@@ -42,10 +86,16 @@ function sse(payloads: unknown[]) {
   );
 }
 
+function isAuthorized(request: Request, env: ApiEnv) {
+  return request.headers.get("x-api-proxy-secret") === env.API_PROXY_SHARED_SECRET;
+}
+
 export function createAppHandler(options: {
   aiProvider: AIProvider;
   env: ApiEnv;
 }) {
+  const controlPlane = createPlatformControlPlane();
+
   return async function handleRequest(request: Request): Promise<Response> {
     try {
       const { pathname } = new URL(request.url);
@@ -59,7 +109,7 @@ export function createAppHandler(options: {
       }
 
       if (request.method === "POST" && pathname === "/v1/chat") {
-        if (request.headers.get("x-api-proxy-secret") !== options.env.API_PROXY_SHARED_SECRET) {
+        if (!isAuthorized(request, options.env)) {
           return json(401, { error: "Unauthorized." });
         }
 
@@ -104,6 +154,113 @@ export function createAppHandler(options: {
         return sse(events);
       }
 
+      if (pathname.startsWith("/v1/control-plane/")) {
+        if (!isAuthorized(request, options.env)) {
+          return json(401, { error: "Unauthorized." });
+        }
+
+        const adminEmail = request.headers.get("x-pico-admin-email") ?? "unknown@pico.ai";
+        controlPlane.usageLedger.track(`admin:${adminEmail}`);
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/oauth-apps") {
+          const apps = await controlPlane.oauthRegistry.listOAuthApps();
+          return json(200, { apps });
+        }
+
+        if (request.method === "POST" && pathname === "/v1/control-plane/oauth-apps/register") {
+          const payload = registerOAuthAppSchema.parse(await request.json());
+          const created = await controlPlane.oauthRegistry.registerOAuthApp(payload);
+          controlPlane.usageLedger.track(`oauth:register:${created.app.pico_app_id}`);
+          return json(201, created);
+        }
+
+        if (request.method === "POST" && pathname === "/v1/control-plane/oauth-apps/update") {
+          const payload = updateOAuthAppSchema.parse(await request.json());
+          const app = await controlPlane.oauthRegistry.updateOAuthApp(payload);
+          controlPlane.usageLedger.track(`oauth:update:${app.pico_app_id}`);
+          return json(200, { app });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/oauth-apps/rotate-credential"
+        ) {
+          const payload = picoAppTargetSchema.parse(await request.json());
+          const rotated = await controlPlane.oauthRegistry.rotateCredential(payload);
+          controlPlane.usageLedger.track(`oauth:rotate:${payload.pico_app_id}`);
+          return json(200, rotated);
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/oauth-apps/revoke-credential"
+        ) {
+          const payload = picoAppTargetSchema.parse(await request.json());
+          const app = await controlPlane.oauthRegistry.revokeCredential(payload);
+          controlPlane.usageLedger.track(`oauth:revoke:${payload.pico_app_id}`);
+          return json(200, { app });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/oauth-apps/approve-production-activation"
+        ) {
+          const payload = picoAppTargetSchema.parse(await request.json());
+          const app = await controlPlane.oauthRegistry.approveProductionActivation(payload);
+          controlPlane.usageLedger.track(`oauth:approve:${payload.pico_app_id}`);
+          return json(200, { app });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/oauth-apps/assign-app-admin"
+        ) {
+          const payload = assignAppAdminSchema.parse(await request.json());
+          const app = await controlPlane.oauthRegistry.assignAppAdmin(payload);
+          controlPlane.usageLedger.track(`oauth:assign-admin:${payload.pico_app_id}`);
+          return json(200, { app });
+        }
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/capabilities") {
+          const capabilities = await controlPlane.capabilityRegistry.listCapabilities();
+          return json(200, { capabilities });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/capabilities/register"
+        ) {
+          const payload = registerCapabilitySchema.parse(await request.json());
+          const capability = await controlPlane.capabilityRegistry.registerCapability(payload);
+          controlPlane.usageLedger.track(`capability:register:${capability.capabilityId}`);
+          return json(201, { capability });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/capabilities/publish"
+        ) {
+          const payload = capabilityIdSchema.pick({ capabilityId: true }).parse(await request.json());
+          const capability = await controlPlane.capabilityRegistry.publishCapability(payload);
+          controlPlane.usageLedger.track(`capability:publish:${capability.capabilityId}`);
+          return json(200, { capability });
+        }
+
+        if (
+          request.method === "POST" &&
+          pathname === "/v1/control-plane/capabilities/deprecate"
+        ) {
+          const payload = capabilityIdSchema.parse(await request.json());
+          const capability = await controlPlane.capabilityRegistry.deprecateCapability(payload);
+          controlPlane.usageLedger.track(`capability:deprecate:${capability.capabilityId}`);
+          return json(200, { capability });
+        }
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/usage") {
+          return json(200, { usage: controlPlane.usageLedger.list() });
+        }
+      }
+
       return json(404, { error: "Not found." });
     } catch (error) {
       const isValidationError = error instanceof z.ZodError;
@@ -142,7 +299,7 @@ export function createHttpServer(options: {
     const body =
       request.method === "GET" || request.method === "HEAD"
         ? undefined
-        : Readable.toWeb(request) as ReadableStream;
+        : (Readable.toWeb(request) as ReadableStream);
 
     const webResponse = await handler(
       new Request(url, {

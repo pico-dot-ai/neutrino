@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -20,3 +22,6 @@ jobs:
 
       - name: Check architecture drift
         run: node scripts/check-architecture-drift.mjs
+
+      - name: Check pico-app-container version sync
+        run: node scripts/check-pico-app-container-version.mjs

@@ -1,11 +1,12 @@
 {
   "name": "neutrino-architecture-contract",
-  "version": "1.2.0",
-  "lastUpdated": "2026-03-26",
-  "purpose": "Define architecture in one place and enforce implementation conformance.",
+  "version": "1.3.0",
+  "lastUpdated": "2026-04-21",
+  "purpose": "Define architecture in one place and enforce implementation conformance for an internal API-first platform.",
   "principles": [
     "All infrastructure integrations must be implemented as adapters behind stable ports.",
     "Application code imports contract ports, not concrete infrastructure adapters.",
+    "pico_app_id is the canonical app identity key across control-plane and runtime surfaces.",
     "Postgres is the durable system of record; vector and realtime systems can be swapped.",
     "Deployment must remain push-to-deploy through CI workflows and IaC-managed environments.",
     "Terraform-managed infrastructure must use a shared remote state backend instead of machine-local state.",
@@ -32,6 +33,8 @@
     "adaptersRoot": "packages/adapters",
     "sharedPackages": [
       "packages/ai-gateway",
+      "packages/platform-gateway",
+      "packages/identity-gateway",
       "packages/ui"
     ]
   },
@@ -70,6 +73,38 @@
         "packages/adapters/repo/gitlab-adapter.ts"
       ],
       "swapRule": "Provider APIs are abstracted by RepoProvider."
+    },
+    {
+      "id": "identity-provider",
+      "contractFile": "packages/contracts/src/identity-provider.ts",
+      "requiredAdapters": [
+        "packages/adapters/identity/local-identity-adapter.ts"
+      ],
+      "swapRule": "Authentication providers are connector-driven and swappable behind IdentityProviderConnector."
+    },
+    {
+      "id": "session-store",
+      "contractFile": "packages/contracts/src/session-store.ts",
+      "requiredAdapters": [
+        "packages/adapters/session/signed-cookie-session-adapter.ts"
+      ],
+      "swapRule": "Session issuance and validation remain provider-agnostic through SessionStore."
+    },
+    {
+      "id": "oauth-registry",
+      "contractFile": "packages/contracts/src/oauth-registry.ts",
+      "requiredAdapters": [
+        "packages/adapters/control-plane/in-memory-oauth-registry-adapter.ts"
+      ],
+      "swapRule": "OAuth app registration and credential lifecycle run through OAuthRegistry."
+    },
+    {
+      "id": "capability-registry",
+      "contractFile": "packages/contracts/src/capability-registry.ts",
+      "requiredAdapters": [
+        "packages/adapters/control-plane/in-memory-capability-registry-adapter.ts"
+      ],
+      "swapRule": "Capability publishing, lifecycle, and discovery are mediated by CapabilityRegistry."
     }
   ],
   "requiredPaths": [
@@ -78,7 +113,11 @@
     ".github/workflows",
     "scripts",
     "packages/ui",
-    "packages/ai-gateway"
+    "packages/ai-gateway",
+    "packages/platform-gateway",
+    "packages/identity-gateway",
+    "pico-app-container",
+    "docs/platform-baseline.md"
   ],
   "driftEnforcement": {
     "generatedDoc": "docs/architecture-canonical.md",

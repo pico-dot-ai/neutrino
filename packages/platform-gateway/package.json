@@ -1,0 +1,12 @@
+{
+  "name": "@neutrino/platform-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@neutrino/contracts": "0.1.0"
+  }
+}

@@ -8,6 +8,8 @@ Neutrino is an AI-first monorepo with a Vercel web client, a Cloud Run API, and 
 - `packages/contracts`: stable application ports and shared request/response types
 - `packages/ui`: shared design system built on `shadcn/ui`
 - `packages/adapters`: infrastructure adapters behind contract ports
+- `packages/identity-gateway`: local identity + session gateway wrapper
+- `packages/platform-gateway`: control-plane registry gateway wrapper
 
 ## Commands
 - `npm install`
@@ -26,9 +28,11 @@ The API requires:
 - `API_PROXY_SHARED_SECRET`
 
 The Vercel-facing app also uses:
-- `APP_GATE_USERNAME`
-- `APP_GATE_PASSWORD`
 - `API_BASE_URL`
+- `APP_SESSION_SECRET`
+- `APP_SESSION_TTL_SECONDS`
+- `APP_IDENTITY_USERS_JSON`
+- `APP_AUTH_ENABLED`
 
 For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).
 

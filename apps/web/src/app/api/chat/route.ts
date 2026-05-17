@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerEnv } from "@/lib/config";
+import { getProxyEnv } from "@/lib/config";
+import { requireAdminSession } from "@/lib/auth/request-auth";
 
 const requestSchema = z.object({
   messages: z
@@ -15,14 +16,22 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const serverEnv = getServerEnv();
+    const adminResult = await requireAdminSession(request.headers.get("cookie"));
+    if (!adminResult.ok) {
+      return NextResponse.json(
+        { error: adminResult.error },
+        { status: adminResult.status }
+      );
+    }
+
+    const proxyEnv = getProxyEnv();
     const payload = requestSchema.parse(await request.json());
-    const upstreamUrl = `${serverEnv.API_BASE_URL}/v1/chat`;
+    const upstreamUrl = `${proxyEnv.API_BASE_URL}/v1/chat`;
     const upstream = await fetch(upstreamUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-proxy-secret": serverEnv.API_PROXY_SHARED_SECRET
+        "x-api-proxy-secret": proxyEnv.API_PROXY_SHARED_SECRET
       },
       body: JSON.stringify(payload)
     });

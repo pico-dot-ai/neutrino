@@ -1,0 +1,20 @@
+version: 1
+pico_app_id: pico_app_replace_me
+name: sample-internal-app
+owner_org: picoai
+environments:
+  - name: dev
+    region: us-central1
+required_capabilities:
+  - name: decision-tracker
+    version: ">=0.1.0"
+    scopes:
+      - decisions:read
+      - decisions:write
+  - name: llm-gateway
+    version: ">=1.0.0"
+    scopes:
+      - llm:generate
+limits:
+  requests_per_minute: 300
+  monthly_tokens: 500000

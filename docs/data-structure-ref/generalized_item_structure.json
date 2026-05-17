@@ -1,0 +1,33 @@
+{
+  "Item": {
+    "uuid": "string",
+    "title": "string",
+    "content": "string (optional)",
+    "url": "string (optional)",
+
+    "status": "enum(idle, active, in_progress, done, cancelled, archived)",
+    "priority": "enum(low, medium, high, critical)",
+    "starts_at": "datetime (optional)",
+    "ends_at": "datetime (optional)",
+    "due_at": "datetime (optional)",
+
+    "related_uuids": ["string"],
+    "tags": ["string"],
+
+    "assignee_uuids": ["string"],
+    "participant_uuids": ["string"],
+    "owner_uuid": "string",
+
+    "created_by": "string",
+    "created_at": "datetime",
+    "updated_at": "datetime",
+    "deleted_at": "datetime (nullable)"
+  },
+
+  "ItemRelation": {
+    "from_uuid": "string",       // List or container item
+    "to_uuid": "string",         // Referenced or contained item
+    "order_index": "number",     // Optional: defines order in a list
+    "relation_type": "string"     // Optional: e.g., 'contains', 'references', 'blocks'
+  }
+}

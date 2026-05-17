@@ -1,0 +1,6 @@
+region                 = "us-central1"
+service_name           = "sample-pico-app-api"
+image                  = "us-central1-docker.pkg.dev/PROJECT/REPO/sample-pico-app-api:latest"
+pico_app_id            = "pico_app_replace_me"
+neutrino_token_url     = "https://neutrino.example.com/oauth/token"
+neutrino_grpc_endpoint = "neutrino.example.com:443"

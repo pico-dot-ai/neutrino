@@ -18,6 +18,8 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "architecture:render": "node scripts/render-architecture-doc.mjs",
-    "architecture:check": "node scripts/check-architecture-drift.mjs"
+    "architecture:check": "node scripts/check-architecture-drift.mjs",
+    "starter:version:bump": "node scripts/bump-pico-app-container-version.mjs",
+    "starter:version:check": "node scripts/check-pico-app-container-version.mjs"
   }
 }

@@ -1,0 +1,23 @@
+{
+  "name": "@pico-app/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup --config tsup.config.ts",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --project tsconfig.json",
+    "test": "echo 'add api tests'"
+  },
+  "dependencies": {
+    "@pico-app/contracts": "0.1.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "@types/node": "^24.6.0"
+  }
+}

@@ -5,9 +5,10 @@
 - Configure:
   - `API_BASE_URL`
   - `API_PROXY_SHARED_SECRET`
-  - `APP_GATE_USERNAME`
-  - `APP_GATE_PASSWORD`
-  - `NEXT_PUBLIC_API_GATE_ENABLED`
+  - `APP_SESSION_SECRET`
+  - `APP_SESSION_TTL_SECONDS`
+  - `APP_IDENTITY_USERS_JSON`
+  - `APP_AUTH_ENABLED`
   - `NEXT_PUBLIC_APP_NAME`
 - `API_BASE_URL` must be the root Cloud Run service URL only, for example `https://neutrino-api-xxxxx-uc.a.run.app`
 - Do not set `API_BASE_URL` to:

@@ -14,6 +14,7 @@
   "dependencies": {
     "@neutrino/ai-gateway": "0.1.0",
     "@neutrino/contracts": "0.1.0",
+    "@neutrino/platform-gateway": "0.1.0",
     "openai": "^6.33.0",
     "zod": "^4.1.12"
   },

@@ -1,50 +1,49 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAdminSession } from "@/lib/auth/request-auth";
 
-const protectedPaths = ["/", "/api/chat"];
+const protectedPrefixes = ["/admin", "/api/chat", "/api/platform", "/api/auth/me", "/api/auth/logout"];
 
-export function proxy(request: NextRequest) {
-  const gateEnabled = process.env.NEXT_PUBLIC_API_GATE_ENABLED !== "false";
-  const isProtected = protectedPaths.some((path) =>
-    request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(`${path}/`)
+function isProtectedPath(pathname: string) {
+  return protectedPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );
+}
 
-  if (!gateEnabled || !isProtected) {
+function isApiPath(pathname: string) {
+  return pathname.startsWith("/api/");
+}
+
+function jsonError(status: number, error: string) {
+  return NextResponse.json({ error }, { status });
+}
+
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (!isProtectedPath(pathname)) {
     return NextResponse.next();
   }
 
-  const username = process.env.APP_GATE_USERNAME;
-  const password = process.env.APP_GATE_PASSWORD;
-  const header = request.headers.get("authorization");
+  const result = await requireAdminSession(request.headers.get("cookie"));
 
-  if (!username || !password) {
-    return new NextResponse("Missing gate configuration.", { status: 500 });
+  if (result.ok) {
+    return NextResponse.next();
   }
 
-  if (!header?.startsWith("Basic ")) {
-    return new NextResponse("Authentication required.", {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": 'Basic realm="Neutrino Preview"'
-      }
-    });
+  if (isApiPath(pathname)) {
+    return jsonError(result.status, result.error);
   }
 
-  const decoded = atob(header.slice("Basic ".length));
-  const [providedUsername, providedPassword] = decoded.split(":");
-
-  if (providedUsername !== username || providedPassword !== password) {
-    return new NextResponse("Invalid credentials.", {
-      status: 401,
-      headers: {
-        "WWW-Authenticate": 'Basic realm="Neutrino Preview"'
-      }
-    });
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", pathname);
+  if (result.status === 403) {
+    loginUrl.searchParams.set("error", "forbidden");
   }
 
-  return NextResponse.next();
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/", "/api/chat"]
+  matcher: ["/admin/:path*", "/api/chat/:path*", "/api/platform/:path*", "/api/auth/me", "/api/auth/logout"]
 };

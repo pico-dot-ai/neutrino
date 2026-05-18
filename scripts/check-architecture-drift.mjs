@@ -100,10 +100,14 @@ async function walkFiles(relativeDir) {
   const absoluteDir = path.join(repoRoot, relativeDir);
   const entries = await fs.readdir(absoluteDir, { withFileTypes: true });
   const output = [];
+  const ignoredDirs = new Set(["node_modules", ".next", "dist", "build", "coverage"]);
 
   for (const entry of entries) {
     const relativePath = path.join(relativeDir, entry.name);
     if (entry.isDirectory()) {
+      if (ignoredDirs.has(entry.name)) {
+        continue;
+      }
       output.push(...(await walkFiles(relativePath)));
       continue;
     }

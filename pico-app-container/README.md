@@ -13,7 +13,8 @@ Starter Version UUID: `019e3909-5457-7a5e-a5ad-4eae2ca882d9`
 ## Structure
 - `apps/web`: Next.js frontend (public + admin shell)
 - `apps/api`: typed Node backend (Cloud Run deploy target)
-- `packages/contracts`: app-local ports/interfaces
+- `packages/schema`: app-local shared records/types
+- `packages/ports`: app-local ports/interfaces
 - `packages/adapters`: app-local infra adapters
 - `pico.app.yaml`: platform registration manifest template
 - `infra/terraform/cloud-run`: IaC baseline for backend runtime
@@ -45,5 +46,5 @@ Use `infra/terraform/cloud-run` for runtime contract and environment variables.
 
 ## Capability Onboarding
 - Declare required capabilities in `pico.app.yaml`.
-- Add backend client methods behind `PlatformCapabilityClient` in `packages/contracts`.
+- Add backend client methods behind `PlatformCapabilityClient` in `packages/ports`.
 - Implement provider-specific transport in `packages/adapters`.

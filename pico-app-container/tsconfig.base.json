@@ -13,8 +13,10 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@pico-app/contracts": ["packages/contracts/src/index.ts"],
-      "@pico-app/contracts/*": ["packages/contracts/src/*"]
+      "@pico-app/schema": ["packages/schema/src/index.ts"],
+      "@pico-app/schema/*": ["packages/schema/src/*"],
+      "@pico-app/ports": ["packages/ports/src/index.ts"],
+      "@pico-app/ports/*": ["packages/ports/src/*"]
     }
   }
 }

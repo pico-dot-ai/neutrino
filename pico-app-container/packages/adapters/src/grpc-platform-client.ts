@@ -1,4 +1,4 @@
-import type { PlatformCapabilityClient } from "@pico-app/contracts";
+import type { PlatformCapabilityClient } from "@pico-app/ports";
 
 export class GrpcPlatformClient implements PlatformCapabilityClient {
   constructor(

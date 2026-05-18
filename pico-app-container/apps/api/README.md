@@ -7,4 +7,4 @@ Required endpoints:
 - `/readyz`
 - application APIs under `/v1/*`
 
-Use `packages/contracts` and `packages/adapters` to isolate provider-specific implementations.
+Use `packages/schema`, `packages/ports`, and `packages/adapters` to isolate provider-specific implementations.

@@ -26,7 +26,7 @@ Out of scope for this phase:
 
 | Phase | Name | Status | Exit Criteria |
 | --- | --- | --- | --- |
-| 1 | Rename and Restructure Foundation | In Progress | `packages/contracts` removed, `schema/ports/core` shape adopted, imports updated, architecture check + typecheck pass |
+| 1 | Rename and Restructure Foundation | Done | `packages/contracts` removed, `schema/ports/core` shape adopted, imports updated, architecture check + typecheck pass |
 | 2 | Core Persistence (Postgres canonical) | In Progress | `@neutrino/core` repositories + migrations in place, clean DB bootstrap validated |
 | 3 | Infrastructure Ports and Adapters | In Progress | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
 | 4 | Catalog, Bindings, and Manifests | In Progress | manifests validate, resources register, bindings resolve runtime plan |
@@ -37,7 +37,7 @@ Out of scope for this phase:
 ## Detailed Phases
 
 ### Phase 1: Rename and Restructure Foundation
-Status: `In Progress`
+Status: `Done`
 
 Target outcomes:
 - Replace `@neutrino/contracts` with `@neutrino/schema`
@@ -50,8 +50,9 @@ Validation:
 - `npm run typecheck`
 
 Current notes:
-- New package roots (`packages/schema`, `packages/ports`, `packages/core`) are present in working tree.
-- Legacy `packages/contracts` is removed from working tree but full stabilization is not yet marked complete.
+- New package roots (`packages/schema`, `packages/ports`, `packages/core`) are in place.
+- Legacy `packages/contracts` references were removed from the active Neutrino repo and starter scaffold surfaces.
+- Validation gates currently expected for this phase: architecture check and typecheck.
 
 ### Phase 2: Core Persistence (Postgres canonical)
 Status: `In Progress`
@@ -161,6 +162,14 @@ Validation:
 3. Close Phase 3 adapter test gaps for object storage, policy engine, and vector/index behavior.
 4. Implement a minimum Phase 4 binding resolution test that drives a Dev-agent manifest through catalog registration and runtime resolution.
 5. Convert current auth and memory/artifact work into explicit Phase 5 acceptance tests.
+
+## Deferred Backlog
+- Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.
+- Goal: improve GitHub-native deployment visibility/history and environment-gated approvals without replacing the current working Cloud Build path immediately.
+- Scope when prioritized:
+  - add `.github/workflows/deploy-api.yml` for push-to-main production deploy orchestration
+  - use GCP Workload Identity Federation for GitHub Actions auth
+  - prevent double deploy by disabling direct Cloud Build GitHub trigger once Actions orchestration is active
 
 ## Roadmap Update Rules
 - Update this file whenever a phase status changes or acceptance criteria change.

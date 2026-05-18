@@ -3,7 +3,8 @@ WORKDIR /app
 
 COPY package.json ./
 COPY apps/api/package.json apps/api/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/schema/package.json packages/schema/package.json
+COPY packages/ports/package.json packages/ports/package.json
 COPY packages/adapters/package.json packages/adapters/package.json
 
 RUN npm install

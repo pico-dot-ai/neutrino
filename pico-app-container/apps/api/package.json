@@ -11,7 +11,7 @@
     "test": "echo 'add api tests'"
   },
   "dependencies": {
-    "@pico-app/contracts": "0.1.0",
+    "@pico-app/ports": "0.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

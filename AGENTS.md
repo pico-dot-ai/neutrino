@@ -22,6 +22,7 @@
 - Keep a clear distinction between product direction in Notion, accepted architecture in repo docs, and implemented behavior in code.
 
 ## Implementation Planning Docs
+- Use `docs/implementation-roadmap.md` as the phase-by-phase implementation tracker and future-session handoff point.
 - Use `docs/requirements-baseline.md` for accepted requirements, deferred requirements, constraints, and open implementation-plan questions.
 - Use `docs/architecture-foundation.md` for rationale and decision history.
 - Use `docs/platform-baseline.md` for the current platform baseline and first vertical milestone.

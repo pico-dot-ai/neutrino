@@ -20,6 +20,20 @@
 - The product auth surface should be hosted under `auth.pico.ai`.
 - The product auth model must use a real login page, not HTTP Basic Auth.
 - The first implementation may use local username/password auth for development and early internal usage.
+- Production web deployments must define `APP_IDENTITY_USERS_JSON`; the development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`.
+- `APP_IDENTITY_USERS_JSON` must be a JSON array with this shape:
+  ```json
+  [
+    {
+      "username": "admin",
+      "password": "replace-with-a-strong-password",
+      "email": "admin@pico.ai",
+      "orgMemberships": ["picoai"],
+      "roles": ["app_admin", "org_admin"]
+    }
+  ]
+  ```
+- `APP_SESSION_SECRET` must also be set to a strong random string in production.
 - Auth must stay behind provider ports and adapters so the backing implementation can move to Ory Kratos.
 - SSO is planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites.
 - Session-backed access must protect Admin Console and builder surfaces.
@@ -61,6 +75,13 @@
   - `_IMAGE_NAME=neutrino-api`
   - `_SERVICE_NAME=neutrino-api`
   - `_DEPLOY_REGION=us-central1`
+- Backend deployment from GitHub should use the Terraform-managed Cloud Build trigger in [infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf), enabled with `enable_github_deploy_trigger = true`.
+- The trigger watches pushes to `main` on `pico-dot-ai/neutrino` and runs [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
+- The Cloud Build GitHub App or Cloud Build repository connection must be connected to the GitHub repo once before Terraform can create or use the trigger.
+- The Cloud Build service account must be able to:
+  - build and push to Artifact Registry
+  - update the Cloud Run service
+  - act as the Cloud Run runtime service account, if a non-default runtime service account is configured
 - Import command for an existing service:
   - `terraform import google_cloud_run_v2_service.api projects/PROJECT_ID/locations/us-central1/services/neutrino-api`
 

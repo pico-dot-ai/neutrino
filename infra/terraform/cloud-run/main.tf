@@ -104,3 +104,37 @@ resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
+
+resource "google_cloudbuild_trigger" "api_main_deploy" {
+  count       = var.enable_github_deploy_trigger ? 1 : 0
+  name        = "${var.service_name}-main-deploy"
+  description = "Build and deploy ${var.service_name} to Cloud Run when ${var.github_owner}/${var.github_repo} main changes."
+  location    = var.region
+  filename    = "cloudbuild.yaml"
+
+  github {
+    owner = var.github_owner
+    name  = var.github_repo
+
+    push {
+      branch = var.github_deploy_branch_regex
+    }
+  }
+
+  included_files = [
+    "apps/api/**",
+    "packages/**",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.base.json",
+    "cloudbuild.yaml"
+  ]
+
+  substitutions = {
+    _AR_HOSTNAME   = var.artifact_registry_hostname
+    _AR_REPOSITORY = var.artifact_registry_repository
+    _IMAGE_NAME    = var.api_image_name
+    _SERVICE_NAME  = var.service_name
+    _DEPLOY_REGION = var.region
+  }
+}

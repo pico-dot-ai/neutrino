@@ -74,6 +74,8 @@ The Vercel-facing app also uses:
 - `APP_IDENTITY_USERS_JSON`
 - `APP_AUTH_ENABLED`
 
+In production, `APP_IDENTITY_USERS_JSON` is required and must contain at least one user with the `app_admin` role. See [docs/deployment-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/deployment-baseline.md) for the JSON shape.
+
 For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).
 
 ## Deployment

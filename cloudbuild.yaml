@@ -35,7 +35,7 @@ steps:
       - -ceu
       - |
         SERVICE_URL="$(cat /workspace/service_url.txt)"
-        curl -fsS "${SERVICE_URL}/healthz"
+        curl -fsS "$${SERVICE_URL}/healthz"
 
 options:
   logging: CLOUD_LOGGING_ONLY

@@ -118,3 +118,38 @@ variable "startup_probe_initial_delay_seconds" {
   type    = number
   default = 0
 }
+
+variable "enable_github_deploy_trigger" {
+  type    = bool
+  default = false
+}
+
+variable "github_owner" {
+  type    = string
+  default = "pico-dot-ai"
+}
+
+variable "github_repo" {
+  type    = string
+  default = "neutrino"
+}
+
+variable "github_deploy_branch_regex" {
+  type    = string
+  default = "^main$"
+}
+
+variable "artifact_registry_hostname" {
+  type    = string
+  default = "us-central1-docker.pkg.dev"
+}
+
+variable "artifact_registry_repository" {
+  type    = string
+  default = "cloud-run-source-deploy"
+}
+
+variable "api_image_name" {
+  type    = string
+  default = "neutrino-api"
+}

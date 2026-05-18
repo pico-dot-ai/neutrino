@@ -7,6 +7,13 @@ api_proxy_secret_name       = "API_PROXY_SHARED_SECRET"
 runtime_service_account_email = "695331385631-compute@developer.gserviceaccount.com"
 allow_public_invoker        = false
 invoker_iam_disabled        = true
+enable_github_deploy_trigger = true
+github_owner                = "pico-dot-ai"
+github_repo                 = "neutrino"
+github_deploy_branch_regex  = "^main$"
+artifact_registry_hostname  = "us-central1-docker.pkg.dev"
+artifact_registry_repository = "cloud-run-source-deploy"
+api_image_name              = "neutrino-api"
 
 # Terraform backend defaults are committed in backend.tf:
 # - bucket = "neutrino-terraform-state"

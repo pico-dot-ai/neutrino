@@ -101,11 +101,11 @@ export function createAppHandler(options: {
     try {
       const { pathname } = new URL(request.url);
 
-      if (request.method === "GET" && pathname === "/healthz") {
+      if (request.method === "GET" && (pathname === "/healthz" || pathname === "/health")) {
         return json(200, { status: "ok" });
       }
 
-      if (request.method === "GET" && pathname === "/readyz") {
+      if (request.method === "GET" && (pathname === "/readyz" || pathname === "/ready")) {
         return json(200, { status: "ready" });
       }
 

@@ -35,7 +35,16 @@ steps:
       - -ceu
       - |
         SERVICE_URL="$(cat /workspace/service_url.txt)"
-        curl -fsS "$${SERVICE_URL}/healthz"
+        echo "Health check URL: $${SERVICE_URL}/health"
+        for attempt in 1 2 3 4 5; do
+          if curl -fsS "$${SERVICE_URL}/health" >/dev/null; then
+            exit 0
+          fi
+          echo "Health check attempt $${attempt} failed; retrying..."
+          sleep 5
+        done
+        curl -i "$${SERVICE_URL}/health"
+        exit 1
 
 options:
   logging: CLOUD_LOGGING_ONLY

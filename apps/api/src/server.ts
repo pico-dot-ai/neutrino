@@ -1,9 +1,9 @@
-import { createOpenAIProvider } from "@neutrino/ai-gateway";
+import { createOpenAILanguageModelProvider } from "@neutrino/ai-gateway";
 import { loadEnv } from "./env";
 import { createHttpServer } from "./http";
 
 const env = loadEnv();
-const aiProvider = createOpenAIProvider(env.OPENAI_API_KEY);
+const aiProvider = createOpenAILanguageModelProvider(env.OPENAI_API_KEY);
 const server = createHttpServer({
   aiProvider,
   env

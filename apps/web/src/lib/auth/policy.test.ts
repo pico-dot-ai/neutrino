@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { IdentityPrincipal } from "@neutrino/contracts";
+import type { IdentityPrincipal } from "@neutrino/schema";
 import { isEligibleAdminPrincipal } from "./policy";
 
 function basePrincipal(overrides?: Partial<IdentityPrincipal>): IdentityPrincipal {

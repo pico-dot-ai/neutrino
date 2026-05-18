@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@neutrino/contracts";
+import type { ChatMessage } from "@neutrino/schema";
 
 export type LocalMessage = ChatMessage & {
   id: string;

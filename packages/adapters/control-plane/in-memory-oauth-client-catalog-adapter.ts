@@ -1,7 +1,5 @@
-import type {
-  OAuthAppRecord,
-  OAuthRegistry
-} from "../../contracts/src/oauth-registry";
+import type { OAuthAppRecord } from "@neutrino/schema";
+import type { OAuthClientCatalog } from "@neutrino/ports";
 
 const defaultGrantModes = ["client_credentials", "authorization_code_pkce"] as const;
 
@@ -9,19 +7,19 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function generatePicoAppId() {
-  return `pico_app_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`;
+function generateAppId() {
+  return `app_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`;
 }
 
 function generateClientId() {
-  return `pico_client_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`;
+  return `client_${crypto.randomUUID().replace(/-/g, "").slice(0, 18)}`;
 }
 
 function generateClientSecret() {
-  return `pico_secret_${crypto.randomUUID().replace(/-/g, "")}`;
+  return `secret_${crypto.randomUUID().replace(/-/g, "")}`;
 }
 
-export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
+export default class InMemoryOAuthClientCatalogAdapter implements OAuthClientCatalog {
   private readonly apps = new Map<string, OAuthAppRecord>();
   private readonly secrets = new Map<string, string>();
 
@@ -36,7 +34,7 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
   }) {
     const createdAt = nowIso();
     const app: OAuthAppRecord = {
-      pico_app_id: generatePicoAppId(),
+      app_id: generateAppId(),
       displayName: request.displayName,
       description: request.description,
       appType: request.appType,
@@ -53,21 +51,21 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
     };
     const clientSecret = generateClientSecret();
 
-    this.apps.set(app.pico_app_id, app);
-    this.secrets.set(app.pico_app_id, clientSecret);
+    this.apps.set(app.app_id, app);
+    this.secrets.set(app.app_id, clientSecret);
 
     return { app, clientSecret };
   }
 
   async updateOAuthApp(request: {
-    pico_app_id: string;
+    app_id: string;
     displayName?: string;
     description?: string;
     redirectUris?: string[];
     allowedScopes?: string[];
     appType?: "consumer" | "provider" | "both";
   }) {
-    const app = this.mustGet(request.pico_app_id);
+    const app = this.mustGet(request.app_id);
     const updated: OAuthAppRecord = {
       ...app,
       displayName: request.displayName ?? app.displayName,
@@ -77,43 +75,43 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
       appType: request.appType ?? app.appType,
       updatedAt: nowIso()
     };
-    this.apps.set(updated.pico_app_id, updated);
+    this.apps.set(updated.app_id, updated);
     return updated;
   }
 
-  async rotateCredential(request: { pico_app_id: string }) {
-    const app = this.mustGet(request.pico_app_id);
+  async rotateCredential(request: { app_id: string }) {
+    const app = this.mustGet(request.app_id);
     const secret = generateClientSecret();
     const updatedAt = nowIso();
 
-    this.secrets.set(app.pico_app_id, secret);
-    this.apps.set(app.pico_app_id, {
+    this.secrets.set(app.app_id, secret);
+    this.apps.set(app.app_id, {
       ...app,
       updatedAt
     });
 
     return {
-      pico_app_id: app.pico_app_id,
+      app_id: app.app_id,
       clientSecret: secret,
       updatedAt
     };
   }
 
-  async revokeCredential(request: { pico_app_id: string }) {
-    const app = this.mustGet(request.pico_app_id);
+  async revokeCredential(request: { app_id: string }) {
+    const app = this.mustGet(request.app_id);
     const updated: OAuthAppRecord = {
       ...app,
       status: "disabled",
       updatedAt: nowIso()
     };
 
-    this.apps.set(app.pico_app_id, updated);
-    this.secrets.delete(app.pico_app_id);
+    this.apps.set(app.app_id, updated);
+    this.secrets.delete(app.app_id);
     return updated;
   }
 
-  async approveProductionActivation(request: { pico_app_id: string }) {
-    const app = this.mustGet(request.pico_app_id);
+  async approveProductionActivation(request: { app_id: string }) {
+    const app = this.mustGet(request.app_id);
     const updated: OAuthAppRecord = {
       ...app,
       productionApproved: true,
@@ -121,12 +119,12 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
       updatedAt: nowIso()
     };
 
-    this.apps.set(app.pico_app_id, updated);
+    this.apps.set(app.app_id, updated);
     return updated;
   }
 
-  async assignAppAdmin(request: { pico_app_id: string; email: string }) {
-    const app = this.mustGet(request.pico_app_id);
+  async assignAppAdmin(request: { app_id: string; email: string }) {
+    const app = this.mustGet(request.app_id);
     const assignedAdminEmails = Array.from(
       new Set([...app.assignedAdminEmails, request.email])
     );
@@ -135,7 +133,7 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
       assignedAdminEmails,
       updatedAt: nowIso()
     };
-    this.apps.set(app.pico_app_id, updated);
+    this.apps.set(app.app_id, updated);
     return updated;
   }
 
@@ -145,10 +143,10 @@ export default class InMemoryOAuthRegistryAdapter implements OAuthRegistry {
     );
   }
 
-  private mustGet(picoAppId: string) {
-    const app = this.apps.get(picoAppId);
+  private mustGet(appId: string) {
+    const app = this.apps.get(appId);
     if (!app) {
-      throw new Error(`OAuth app "${picoAppId}" not found.`);
+      throw new Error(`OAuth app "${appId}" not found.`);
     }
     return app;
   }

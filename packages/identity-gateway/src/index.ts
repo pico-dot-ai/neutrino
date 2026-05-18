@@ -1,19 +1,19 @@
-import type { SessionStore } from "@neutrino/contracts";
+import type { SessionManager } from "@neutrino/ports";
 import LocalIdentityAdapter, {
   type LocalIdentityUser
 } from "../../adapters/identity/local-identity-adapter.ts";
 import SignedCookieSessionAdapter from "../../adapters/session/signed-cookie-session-adapter.ts";
 
-export function createLocalIdentityConnector(options: {
+export function createLocalIdentityProvider(options: {
   users: LocalIdentityUser[];
-  connectorId?: string;
+  providerId?: string;
 }) {
   return new LocalIdentityAdapter(options.users, {
-    connectorId: options.connectorId
+    providerId: options.providerId
   });
 }
 
-export function createSignedCookieSessionStore(secret: string): SessionStore {
+export function createSignedCookieSessionManager(secret: string): SessionManager {
   return new SignedCookieSessionAdapter(secret);
 }
 

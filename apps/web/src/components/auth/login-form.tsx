@@ -1,12 +1,14 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { Button, Input } from "@neutrino/ui";
 
 export function LoginForm(props: {
   nextPath?: string;
   initialError?: string;
 }) {
+  const router = useRouter();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
@@ -42,7 +44,7 @@ export function LoginForm(props: {
         return;
       }
 
-      window.location.href = payload?.redirectTo ?? "/admin";
+      router.push(payload?.redirectTo ?? "/admin");
     } catch (submissionError) {
       setError(
         submissionError instanceof Error

@@ -1,6 +1,6 @@
 export type IdentityProtocol = "local" | "oidc" | "saml";
 
-export type IdentityConnectorCapabilities = {
+export type IdentityProviderCapabilities = {
   supportsPassword: boolean;
   supportsOidc: boolean;
   supportsSaml: boolean;
@@ -24,14 +24,9 @@ export type TokenValidationRequest = {
   protocol: Exclude<IdentityProtocol, "local">;
 };
 
-export interface IdentityProviderConnector {
-  connectorId: string;
-  protocol: IdentityProtocol;
-  capabilities: IdentityConnectorCapabilities;
-  authenticateWithPassword?(
-    request: PasswordAuthRequest
-  ): Promise<IdentityPrincipal | null>;
-  validateToken?(
-    request: TokenValidationRequest
-  ): Promise<IdentityPrincipal | null>;
-}
+export type AuthSession = {
+  sessionId: string;
+  principal: IdentityPrincipal;
+  issuedAt: string;
+  expiresAt: string;
+};

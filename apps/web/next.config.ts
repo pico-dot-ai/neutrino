@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["localhost"],
   transpilePackages: [
     "@neutrino/ui",
-    "@neutrino/contracts",
+    "@neutrino/ports",
+    "@neutrino/schema",
     "@neutrino/identity-gateway"
   ]
 };

@@ -1,5 +1,5 @@
-import InMemoryCapabilityRegistryAdapter from "../../adapters/control-plane/in-memory-capability-registry-adapter.ts";
-import InMemoryOAuthRegistryAdapter from "../../adapters/control-plane/in-memory-oauth-registry-adapter.ts";
+import InMemoryCapabilityCatalogAdapter from "../../adapters/control-plane/in-memory-capability-catalog-adapter.ts";
+import InMemoryOAuthClientCatalogAdapter from "../../adapters/control-plane/in-memory-oauth-client-catalog-adapter.ts";
 
 export type UsageMetric = {
   key: string;
@@ -37,8 +37,8 @@ class InMemoryUsageLedger {
 
 export function createPlatformControlPlane() {
   return {
-    oauthRegistry: new InMemoryOAuthRegistryAdapter(),
-    capabilityRegistry: new InMemoryCapabilityRegistryAdapter(),
+    oauthClientCatalog: new InMemoryOAuthClientCatalogAdapter(),
+    capabilityCatalog: new InMemoryCapabilityCatalogAdapter(),
     usageLedger: new InMemoryUsageLedger()
   };
 }

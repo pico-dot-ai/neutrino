@@ -4,11 +4,11 @@
 - Be a technically grounded partner. Evaluate tradeoffs instead of affirming a direction by default.
 - Prefer the simplest solution that satisfies the current requirement.
 - Do not introduce persistence, microservices, or generic abstraction layers unless there is a concrete second use case.
-- Preserve clear runtime boundaries: `apps/*` own delivery concerns, `packages/contracts` define ports, adapters stay behind those ports.
+- Preserve clear runtime boundaries: `apps/*` own delivery concerns, `packages/schema` and `packages/ports` define ports, adapters stay behind those ports.
 
 ## Architecture Rules
 - For any architecture-affecting change, update `architecture/contract.json` first, then regenerate `docs/architecture-canonical.md`.
-- App and domain code must import contracts and shared packages, never concrete infrastructure adapters directly.
+- App and domain code must import schema, ports, and shared packages, never concrete infrastructure adapters directly.
 - Infrastructure-specific behavior belongs in deployment/config layers, not in feature code.
 - The API runtime must stay stateless and container-portable across Cloud Run and App Runner.
 
@@ -20,6 +20,14 @@
 - Notion pages do not replace in-repo coding-agent documentation. Repo files remain authoritative for implementation, runtime contracts, validation, and current system behavior.
 - When Notion direction becomes accepted, align repo documentation deliberately: update `docs/requirements-baseline.md` for requirements, update `architecture/contract.json` first for architecture-affecting changes, regenerate `docs/architecture-canonical.md`, and update other docs only where their ownership applies.
 - Keep a clear distinction between product direction in Notion, accepted architecture in repo docs, and implemented behavior in code.
+
+## Implementation Planning Docs
+- Use `docs/requirements-baseline.md` for accepted requirements, deferred requirements, constraints, and open implementation-plan questions.
+- Use `docs/architecture-foundation.md` for rationale and decision history.
+- Use `docs/platform-baseline.md` for the current platform baseline and first vertical milestone.
+- Use `docs/deployment-baseline.md` for deployment, auth-domain, data-platform, and blob/artifact infrastructure assumptions.
+- Ignore `docs/data-structure-ref/` for the current platform implementation-planning phase. Those files are reserved for later task, calendar, and generalized item data-structure design.
+- The first implementation plan should center on the composable AI service-platform vertical path, not a standalone Agent Builder UI.
 
 ## Frontend Design System Rules
 - `shadcn/ui` is the required component foundation for the project.
@@ -37,6 +45,5 @@
 
 ## Browser Verification Policy
 - For web implementation review, use the Codex in-app browser (IAB) by default.
-- Do not use Playwright for visual verification unless the user explicitly asks for Playwright.
 - If IAB is unavailable or blocked, use the system default browser as the fallback.
 - Keep browser checks scoped to the target route/state and report what was verified.

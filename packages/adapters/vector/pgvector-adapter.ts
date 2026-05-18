@@ -1,11 +1,11 @@
 import type {
   VectorMatch,
   VectorQuery,
-  VectorRecord,
-  VectorStore
-} from "../../contracts/src/vector-store";
+  VectorRecord
+} from "@neutrino/schema";
+import type { VectorIndex } from "@neutrino/ports";
 
-export class PgVectorAdapter implements VectorStore {
+export class PgVectorAdapter implements VectorIndex {
   async upsert(_records: VectorRecord[]): Promise<void> {
     throw new Error("Not implemented.");
   }

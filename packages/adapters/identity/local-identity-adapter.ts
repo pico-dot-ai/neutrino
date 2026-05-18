@@ -1,8 +1,8 @@
 import type {
   IdentityPrincipal,
-  IdentityProviderConnector,
   PasswordAuthRequest
-} from "../../contracts/src/identity-provider";
+} from "@neutrino/schema";
+import type { IdentityProvider } from "@neutrino/ports";
 
 export type LocalIdentityUser = {
   username: string;
@@ -12,8 +12,8 @@ export type LocalIdentityUser = {
   roles: string[];
 };
 
-export default class LocalIdentityAdapter implements IdentityProviderConnector {
-  connectorId: string;
+export default class LocalIdentityAdapter implements IdentityProvider {
+  providerId: string;
   protocol = "local" as const;
   capabilities = {
     supportsPassword: true,
@@ -24,10 +24,10 @@ export default class LocalIdentityAdapter implements IdentityProviderConnector {
   constructor(
     private readonly users: LocalIdentityUser[],
     options?: {
-      connectorId?: string;
+      providerId?: string;
     }
   ) {
-    this.connectorId = options?.connectorId ?? "local-mvp";
+    this.providerId = options?.providerId ?? "local-mvp";
   }
 
   async authenticateWithPassword(

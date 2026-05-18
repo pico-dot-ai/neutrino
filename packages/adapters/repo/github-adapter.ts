@@ -1,9 +1,9 @@
 import type {
   BranchRef,
   FileCommit,
-  RepoProvider,
   RepoRef
-} from "../../contracts/src/repo-provider";
+} from "@neutrino/schema";
+import type { RepoProvider } from "@neutrino/ports";
 
 export class GitHubAdapter implements RepoProvider {
   async listRepos(_installationId: string): Promise<RepoRef[]> {

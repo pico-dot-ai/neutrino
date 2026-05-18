@@ -1,4 +1,4 @@
-import type { IdentityPrincipal } from "@neutrino/contracts";
+import type { IdentityPrincipal } from "@neutrino/schema";
 import {
   REQUIRED_ADMIN_ROLE,
   REQUIRED_EMAIL_DOMAIN,

@@ -1,31 +1,29 @@
-import type {
-  CapabilityRecord,
-  CapabilityRegistry
-} from "../../contracts/src/capability-registry";
+import type { CapabilityRecord } from "@neutrino/schema";
+import type { CapabilityCatalog } from "@neutrino/ports";
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function toCapabilityId(ownerPicoAppId: string, name: string, version: string) {
+function toCapabilityId(ownerAppId: string, name: string, version: string) {
   const safeName = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const safeVersion = version.toLowerCase().replace(/[^a-z0-9.]+/g, "-");
-  return `${ownerPicoAppId}:${safeName}:${safeVersion}`;
+  return `${ownerAppId}:${safeName}:${safeVersion}`;
 }
 
-export default class InMemoryCapabilityRegistryAdapter implements CapabilityRegistry {
+export default class InMemoryCapabilityCatalogAdapter implements CapabilityCatalog {
   private readonly capabilities = new Map<string, CapabilityRecord>();
 
   async registerCapability(request: {
     name: string;
     version: string;
-    ownerPicoAppId: string;
+    ownerAppId: string;
     description?: string;
     scopes?: string[];
     limits?: Record<string, string | number | boolean>;
   }) {
     const capabilityId = toCapabilityId(
-      request.ownerPicoAppId,
+      request.ownerAppId,
       request.name,
       request.version
     );
@@ -34,7 +32,7 @@ export default class InMemoryCapabilityRegistryAdapter implements CapabilityRegi
       capabilityId,
       name: request.name,
       version: request.version,
-      ownerPicoAppId: request.ownerPicoAppId,
+      ownerAppId: request.ownerAppId,
       description: request.description,
       scopes: request.scopes ?? [],
       limits: request.limits ?? {},

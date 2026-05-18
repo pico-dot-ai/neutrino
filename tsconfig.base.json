@@ -18,15 +18,28 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@neutrino/ai-gateway": [
         "packages/ai-gateway/src/index.ts"
       ],
-      "@neutrino/contracts": [
-        "packages/contracts/src/index.ts"
+      "@neutrino/core": [
+        "packages/core/src/index.ts"
       ],
-      "@neutrino/contracts/*": [
-        "packages/contracts/src/*"
+      "@neutrino/core/*": [
+        "packages/core/src/*"
+      ],
+      "@neutrino/ports": [
+        "packages/ports/src/index.ts"
+      ],
+      "@neutrino/ports/*": [
+        "packages/ports/src/*"
+      ],
+      "@neutrino/schema": [
+        "packages/schema/src/index.ts"
+      ],
+      "@neutrino/schema/*": [
+        "packages/schema/src/*"
       ],
       "@neutrino/identity-gateway": [
         "packages/identity-gateway/src/index.ts"

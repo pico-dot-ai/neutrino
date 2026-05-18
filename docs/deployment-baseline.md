@@ -16,6 +16,14 @@
   - a revision URL path
   - a URL that already includes `/v1/chat`
 
+## Auth
+- The product auth surface should be hosted under `auth.pico.ai`.
+- The product auth model must use a real login page, not HTTP Basic Auth.
+- The first implementation may use local username/password auth for development and early internal usage.
+- Auth must stay behind provider ports and adapters so the backing implementation can move to Ory Kratos.
+- SSO is planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites.
+- Session-backed access must protect Admin Console and builder surfaces.
+
 ## API
 - Build the container from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
 - When using Cloud Build, the build context must be the repository root, not `apps/api`, because the Dockerfile copies workspace files from the monorepo root.
@@ -55,6 +63,20 @@
   - `_DEPLOY_REGION=us-central1`
 - Import command for an existing service:
   - `terraform import google_cloud_run_v2_service.api projects/PROJECT_ID/locations/us-central1/services/neutrino-api`
+
+## Data Platform
+- Hosted Postgres is part of the first serious implementation plan and is the durable system of record for platform metadata and canonical records.
+- pgvector should be installed with Postgres for the first vector/retrieval implementation.
+- pgvector is the initial vector implementation, not a permanent platform assumption.
+- Vector and retrieval access must stay behind replaceable ports so Qdrant, Pinecone, object storage indexes, or external retrieval APIs can be introduced later.
+- Database schema changes must be explicit, versioned migrations.
+
+## Blob and Artifact Storage
+- Blob/artifact storage is required as a platform service boundary.
+- Postgres stores artifact metadata, references, permissions, provenance, checksums, and retention state.
+- ObjectStorage stores original bytes and generated binary assets, including small images, thumbnails, exports, eval datasets, trace attachments, generated files, and uploaded documents.
+- The first development backing can be local filesystem or local object storage, but the port should match production object storage semantics.
+- Production backing should remain swappable among S3-compatible storage, GCS, R2, or equivalent object stores.
 
 ## OpenAI Key Location
 - Use the standard `OPENAI_API_KEY` environment variable.

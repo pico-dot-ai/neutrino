@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge, Button, Input, Separator } from "@neutrino/ui";
 
 type PrincipalPayload = {
@@ -14,7 +15,7 @@ type PrincipalPayload = {
 };
 
 type OAuthAppRecord = {
-  pico_app_id: string;
+  app_id: string;
   displayName: string;
   appType: "consumer" | "provider" | "both";
   status: string;
@@ -27,12 +28,26 @@ type CapabilityRecord = {
   capabilityId: string;
   name: string;
   version: string;
-  ownerPicoAppId: string;
+  ownerAppId: string;
   lifecycleState: string;
   internalOnly: boolean;
 };
 
+async function requestJson<T>(url: string, init?: RequestInit) {
+  const response = await fetch(url, init);
+  const payload = (await response.json().catch(() => null)) as
+    | ({ error?: string } & T)
+    | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.error ?? `Request failed for ${url}`);
+  }
+
+  return payload as T;
+}
+
 export function DeveloperConsole() {
+  const router = useRouter();
   const [principal, setPrincipal] = React.useState<PrincipalPayload["principal"] | null>(null);
   const [oauthApps, setOauthApps] = React.useState<OAuthAppRecord[]>([]);
   const [capabilities, setCapabilities] = React.useState<CapabilityRecord[]>([]);
@@ -41,22 +56,9 @@ export function DeveloperConsole() {
   const [appType, setAppType] = React.useState<OAuthAppRecord["appType"]>("consumer");
   const [capabilityName, setCapabilityName] = React.useState("decision-tracker");
   const [capabilityVersion, setCapabilityVersion] = React.useState("0.1.0");
-  const [ownerPicoAppId, setOwnerPicoAppId] = React.useState("");
+  const [ownerAppId, setOwnerPicoAppId] = React.useState("");
 
-  async function requestJson<T>(url: string, init?: RequestInit) {
-    const response = await fetch(url, init);
-    const payload = (await response.json().catch(() => null)) as
-      | ({ error?: string } & T)
-      | null;
-
-    if (!response.ok) {
-      throw new Error(payload?.error ?? `Request failed for ${url}`);
-    }
-
-    return payload as T;
-  }
-
-  async function refresh() {
+  const refresh = React.useCallback(async () => {
     const [me, appList, capabilityList] = await Promise.all([
       requestJson<PrincipalPayload>("/api/auth/me"),
       requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
@@ -67,16 +69,16 @@ export function DeveloperConsole() {
     setOauthApps(appList.apps);
     setCapabilities(capabilityList.capabilities);
 
-    if (!ownerPicoAppId && appList.apps.length > 0) {
-      setOwnerPicoAppId(appList.apps[0].pico_app_id);
-    }
-  }
+    setOwnerPicoAppId((currentOwnerPicoAppId) =>
+      currentOwnerPicoAppId || appList.apps[0]?.app_id || ""
+    );
+  }, []);
 
   React.useEffect(() => {
     void refresh().catch((error) => {
       setMessage(error instanceof Error ? error.message : "Unable to load console.");
     });
-  }, []);
+  }, [refresh]);
 
   async function registerOAuthApp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -99,10 +101,10 @@ export function DeveloperConsole() {
       });
 
       setMessage(
-        `Registered ${payload.app.pico_app_id}. Client secret (shown once): ${payload.clientSecret}`
+        `Registered ${payload.app.app_id}. Client secret (shown once): ${payload.clientSecret}`
       );
       await refresh();
-      setOwnerPicoAppId(payload.app.pico_app_id);
+      setOwnerPicoAppId(payload.app.app_id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to register app.");
     }
@@ -123,7 +125,7 @@ export function DeveloperConsole() {
           body: JSON.stringify({
             name: capabilityName,
             version: capabilityVersion,
-            ownerPicoAppId
+            ownerAppId
           })
         }
       );
@@ -141,7 +143,7 @@ export function DeveloperConsole() {
     await fetch("/api/auth/logout", {
       method: "POST"
     });
-    window.location.href = "/login";
+    router.push("/login");
   }
 
   return (
@@ -153,7 +155,7 @@ export function DeveloperConsole() {
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">Neutrino</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight">Developer Console</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Register OAuth apps, manage capability publishing, and verify internal platform metadata keyed by <code>pico_app_id</code>.
+                Register OAuth apps, manage capability publishing, and verify internal platform metadata keyed by <code>app_id</code>.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -204,12 +206,12 @@ export function DeveloperConsole() {
               <select
                 className="h-11 w-full rounded-full border border-input bg-background px-4 text-sm"
                 onChange={(event) => setOwnerPicoAppId(event.target.value)}
-                value={ownerPicoAppId}
+                value={ownerAppId}
               >
                 <option value="">Select owner app</option>
                 {oauthApps.map((app) => (
-                  <option key={app.pico_app_id} value={app.pico_app_id}>
-                    {app.displayName} ({app.pico_app_id})
+                  <option key={app.app_id} value={app.app_id}>
+                    {app.displayName} ({app.app_id})
                   </option>
                 ))}
               </select>
@@ -226,9 +228,9 @@ export function DeveloperConsole() {
               <p className="text-sm text-muted-foreground">No apps registered yet.</p>
             ) : (
               oauthApps.map((app) => (
-                <article key={app.pico_app_id} className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm">
+                <article key={app.app_id} className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm">
                   <p className="font-medium">{app.displayName}</p>
-                  <p className="text-muted-foreground">{app.pico_app_id}</p>
+                  <p className="text-muted-foreground">{app.app_id}</p>
                   <p className="text-muted-foreground">
                     type: {app.appType} · status: {app.status} · prod approved: {String(app.productionApproved)}
                   </p>
@@ -253,7 +255,7 @@ export function DeveloperConsole() {
                   <p className="font-medium">{capability.name} {capability.version}</p>
                   <p className="text-muted-foreground">{capability.capabilityId}</p>
                   <p className="text-muted-foreground">
-                    owner: {capability.ownerPicoAppId} · lifecycle: {capability.lifecycleState} · internalOnly: {String(capability.internalOnly)}
+                    owner: {capability.ownerAppId} · lifecycle: {capability.lifecycleState} · internalOnly: {String(capability.internalOnly)}
                   </p>
                 </article>
               ))

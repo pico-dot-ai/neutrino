@@ -1,10 +1,10 @@
 import type {
   CollabSnapshot,
-  CollabStore,
   CollabUpdate
-} from "../../contracts/src/collab-store";
+} from "@neutrino/schema";
+import type { CollaborationRepository } from "@neutrino/ports";
 
-export class YjsAdapter implements CollabStore {
+export class YjsAdapter implements CollaborationRepository {
   async loadDoc(_docId: string): Promise<CollabSnapshot | null> {
     throw new Error("Not implemented.");
   }

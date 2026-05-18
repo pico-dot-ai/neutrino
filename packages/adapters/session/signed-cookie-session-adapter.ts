@@ -1,8 +1,8 @@
 import type {
   AuthSession,
-  IdentityPrincipal,
-  SessionStore
-} from "../../contracts/src";
+  IdentityPrincipal
+} from "@neutrino/schema";
+import type { SessionManager } from "@neutrino/ports";
 
 type SessionPayload = {
   sessionId: string;
@@ -56,7 +56,7 @@ async function verify(payload: string, signature: string, secret: string) {
   return signature === expected;
 }
 
-export default class SignedCookieSessionAdapter implements SessionStore {
+export default class SignedCookieSessionAdapter implements SessionManager {
   constructor(private readonly secret: string) {}
 
   async issueSession(options: {

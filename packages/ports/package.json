@@ -1,10 +1,13 @@
 {
-  "name": "@neutrino/contracts",
+  "name": "@neutrino/ports",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*"
+  },
+  "dependencies": {
+    "@neutrino/schema": "0.1.0"
   }
 }

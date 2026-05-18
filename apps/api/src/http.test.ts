@@ -1,14 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { AIProvider, EmbedRequest, GenerateRequest } from "@neutrino/contracts";
+import type { LanguageModelProvider } from "@neutrino/ports";
+import type { GenerateRequest } from "@neutrino/schema";
 import { createAppHandler } from "./http";
 
-class FakeProvider implements AIProvider {
+class FakeProvider implements LanguageModelProvider {
   async generate(_request: GenerateRequest) {
     return { content: "unused" };
-  }
-
-  async embed(_request: EmbedRequest) {
-    return { vectors: [] };
   }
 
   async *stream() {

@@ -2,7 +2,7 @@
 
 Starter container for new internal pico apps that deploy independently while consuming Neutrino platform capabilities.
 
-Starter Version UUID: `019db1ca-803d-71f7-be40-37c122ed5700`
+Starter Version UUID: `019e3909-5457-7a5e-a5ad-4eae2ca882d9`
 
 ## Purpose
 - provide a runnable web + api monorepo starter

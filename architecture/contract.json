@@ -1,13 +1,19 @@
 {
   "name": "neutrino-architecture-contract",
-  "version": "1.3.0",
-  "lastUpdated": "2026-04-21",
-  "purpose": "Define architecture in one place and enforce implementation conformance for an internal API-first platform.",
+  "version": "1.5.0",
+  "lastUpdated": "2026-05-17",
+  "purpose": "Define architecture in one place and enforce implementation conformance for a composable AI service platform.",
   "principles": [
     "All infrastructure integrations must be implemented as adapters behind stable ports.",
-    "Application code imports contract ports, not concrete infrastructure adapters.",
-    "pico_app_id is the canonical app identity key across control-plane and runtime surfaces.",
-    "Postgres is the durable system of record; vector and realtime systems can be swapped.",
+    "Application code imports schema and ports, not concrete infrastructure adapters.",
+    "app_id is the canonical app identity key across control-plane and runtime surfaces.",
+    "Services are the core reusable unit; apps are user-facing surfaces and control planes over services.",
+    "File-defined resources must round-trip with builder UIs instead of creating hidden app-specific resource structures.",
+    "Auth, storage, memory, artifacts, catalog, invocation, observability, and policy are platform core concerns.",
+    "Postgres is the durable system of record for core state; vector and realtime systems can be swapped.",
+    "pgvector is the first vector implementation, not a permanent platform assumption.",
+    "ObjectStorage owns artifact bytes; Postgres owns artifact metadata, permissions, and references.",
+    "The initial auth service must provide a real login surface and remain swappable toward Ory Kratos and SSO.",
     "Deployment must remain push-to-deploy through CI workflows and IaC-managed environments.",
     "Terraform-managed infrastructure must use a shared remote state backend instead of machine-local state.",
     "The frontend design system is mandatory and built on shared shadcn/ui-based primitives and tokens."
@@ -29,9 +35,15 @@
       "apps/web",
       "apps/api"
     ],
-    "contractsRoot": "packages/contracts/src",
+    "schemaRoot": "packages/schema/src",
+    "portsRoot": "packages/ports/src",
+    "coreRoot": "packages/core/src",
     "adaptersRoot": "packages/adapters",
     "sharedPackages": [
+      "packages/schema",
+      "packages/ports",
+      "packages/core",
+      "packages/adapters",
       "packages/ai-gateway",
       "packages/platform-gateway",
       "packages/identity-gateway",
@@ -40,34 +52,54 @@
   },
   "ports": [
     {
-      "id": "ai-provider",
-      "contractFile": "packages/contracts/src/ai-provider.ts",
+      "id": "language-model-provider",
+      "portFile": "packages/ports/src/ai.ts",
+      "schemaFile": "packages/schema/src/ai.ts",
       "requiredAdapters": [
         "packages/adapters/ai/openai-adapter.ts",
         "packages/adapters/ai/anthropic-adapter.ts"
       ],
-      "swapRule": "App and domain layers depend on AIProvider only."
+      "swapRule": "App and domain layers depend on LanguageModelProvider only. The term model is reserved for LLM and AI model references."
     },
     {
-      "id": "vector-store",
-      "contractFile": "packages/contracts/src/vector-store.ts",
+      "id": "embedding-provider",
+      "portFile": "packages/ports/src/ai.ts",
+      "schemaFile": "packages/schema/src/ai.ts",
+      "requiredAdapters": [],
+      "swapRule": "Embedding generation is isolated behind EmbeddingProvider before records reach indexes."
+    },
+    {
+      "id": "vector-index",
+      "portFile": "packages/ports/src/vector.ts",
+      "schemaFile": "packages/schema/src/vector.ts",
       "requiredAdapters": [
         "packages/adapters/vector/pgvector-adapter.ts",
         "packages/adapters/vector/qdrant-adapter.ts"
       ],
-      "swapRule": "VectorStore is selected by configuration, not by app imports."
+      "swapRule": "VectorIndex is selected by configuration, not by app imports."
     },
     {
-      "id": "collab-store",
-      "contractFile": "packages/contracts/src/collab-store.ts",
+      "id": "object-storage",
+      "portFile": "packages/ports/src/object-storage.ts",
+      "schemaFile": "packages/schema/src/platform.ts",
+      "requiredAdapters": [
+        "packages/adapters/object/local-object-storage-adapter.ts"
+      ],
+      "swapRule": "ObjectStorage stores artifact bytes; ArtifactRepository stores canonical metadata in core persistence."
+    },
+    {
+      "id": "collaboration-repository",
+      "portFile": "packages/ports/src/collaboration.ts",
+      "schemaFile": "packages/schema/src/collaboration.ts",
       "requiredAdapters": [
         "packages/adapters/collab/yjs-adapter.ts"
       ],
-      "swapRule": "Realtime protocol details stay inside collab adapters."
+      "swapRule": "Realtime protocol details stay inside collaboration adapters."
     },
     {
       "id": "repo-provider",
-      "contractFile": "packages/contracts/src/repo-provider.ts",
+      "portFile": "packages/ports/src/repo.ts",
+      "schemaFile": "packages/schema/src/repo.ts",
       "requiredAdapters": [
         "packages/adapters/repo/github-adapter.ts",
         "packages/adapters/repo/gitlab-adapter.ts"
@@ -76,35 +108,57 @@
     },
     {
       "id": "identity-provider",
-      "contractFile": "packages/contracts/src/identity-provider.ts",
+      "portFile": "packages/ports/src/auth.ts",
+      "schemaFile": "packages/schema/src/auth.ts",
       "requiredAdapters": [
         "packages/adapters/identity/local-identity-adapter.ts"
       ],
-      "swapRule": "Authentication providers are connector-driven and swappable behind IdentityProviderConnector."
+      "swapRule": "Authentication providers are swappable behind IdentityProvider, with Ory Kratos and SSO as later adapter targets."
     },
     {
-      "id": "session-store",
-      "contractFile": "packages/contracts/src/session-store.ts",
+      "id": "session-manager",
+      "portFile": "packages/ports/src/auth.ts",
+      "schemaFile": "packages/schema/src/auth.ts",
       "requiredAdapters": [
         "packages/adapters/session/signed-cookie-session-adapter.ts"
       ],
-      "swapRule": "Session issuance and validation remain provider-agnostic through SessionStore."
+      "swapRule": "Session issuance and validation remain provider-agnostic through SessionManager."
     },
     {
-      "id": "oauth-registry",
-      "contractFile": "packages/contracts/src/oauth-registry.ts",
+      "id": "policy-engine",
+      "portFile": "packages/ports/src/auth.ts",
+      "schemaFile": "packages/schema/src/platform.ts",
       "requiredAdapters": [
-        "packages/adapters/control-plane/in-memory-oauth-registry-adapter.ts"
+        "packages/adapters/policy/local-policy-engine-adapter.ts"
       ],
-      "swapRule": "OAuth app registration and credential lifecycle run through OAuthRegistry."
+      "swapRule": "Policy decisions are isolated behind PolicyEngine, with OpenFGA as a later adapter target."
     },
     {
-      "id": "capability-registry",
-      "contractFile": "packages/contracts/src/capability-registry.ts",
+      "id": "oauth-client-catalog",
+      "portFile": "packages/ports/src/catalog.ts",
+      "schemaFile": "packages/schema/src/catalog.ts",
       "requiredAdapters": [
-        "packages/adapters/control-plane/in-memory-capability-registry-adapter.ts"
+        "packages/adapters/control-plane/in-memory-oauth-client-catalog-adapter.ts"
       ],
-      "swapRule": "Capability publishing, lifecycle, and discovery are mediated by CapabilityRegistry."
+      "swapRule": "OAuth app registration and credential lifecycle run through OAuthClientCatalog."
+    },
+    {
+      "id": "capability-catalog",
+      "portFile": "packages/ports/src/catalog.ts",
+      "schemaFile": "packages/schema/src/catalog.ts",
+      "requiredAdapters": [
+        "packages/adapters/control-plane/in-memory-capability-catalog-adapter.ts"
+      ],
+      "swapRule": "Capability publishing, lifecycle, and discovery are mediated by CapabilityCatalog."
+    },
+    {
+      "id": "core-runtime-repositories",
+      "portFile": "packages/ports/src/runtime.ts",
+      "schemaFile": "packages/schema/src/platform.ts",
+      "requiredAdapters": [
+        "packages/core/src/repositories/in-memory-core-repositories.ts"
+      ],
+      "swapRule": "Repository interfaces describe canonical core persistence; Postgres-backed core implementations remain the production target, not a generic app-level database abstraction."
     }
   ],
   "requiredPaths": [
@@ -112,6 +166,10 @@
     "migrations",
     ".github/workflows",
     "scripts",
+    "packages/schema",
+    "packages/ports",
+    "packages/core",
+    "packages/adapters",
     "packages/ui",
     "packages/ai-gateway",
     "packages/platform-gateway",

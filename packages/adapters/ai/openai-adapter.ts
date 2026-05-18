@@ -1,14 +1,14 @@
 import type {
-  AIProvider,
-  EmbedRequest,
-  EmbedResponse,
+  LanguageModelProvider
+} from "@neutrino/ports";
+import type {
   GenerateRequest,
   GenerateResponse,
   StreamEvent
-} from "../../contracts/src/ai-provider";
+} from "@neutrino/schema";
 import OpenAI from "openai";
 
-class OpenAIAdapter implements AIProvider {
+class OpenAIAdapter implements LanguageModelProvider {
   constructor(private readonly client: OpenAI) {}
 
   async generate(request: GenerateRequest): Promise<GenerateResponse> {
@@ -23,10 +23,6 @@ class OpenAIAdapter implements AIProvider {
     return {
       content: response.output_text
     };
-  }
-
-  async embed(_request: EmbedRequest): Promise<EmbedResponse> {
-    throw new Error("Not implemented.");
   }
 
   async *stream(request: GenerateRequest): AsyncIterable<StreamEvent> {

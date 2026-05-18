@@ -1,5 +1,9 @@
 {
   "name": "@neutrino/adapters",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@neutrino/ports": "0.1.0",
+    "@neutrino/schema": "0.1.0"
+  }
 }

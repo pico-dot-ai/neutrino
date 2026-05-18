@@ -1,12 +1,12 @@
-import type { IdentityPrincipal } from "@neutrino/contracts";
-import { createSignedCookieSessionStore } from "@neutrino/identity-gateway";
+import type { IdentityPrincipal } from "@neutrino/schema";
+import { createSignedCookieSessionManager } from "@neutrino/identity-gateway";
 import { getAuthPolicyEnv } from "@/lib/config";
 import { SESSION_COOKIE_NAME } from "./constants";
 
 export async function issueAdminSession(principal: IdentityPrincipal) {
   const authEnv = getAuthPolicyEnv();
-  const sessionStore = createSignedCookieSessionStore(authEnv.APP_SESSION_SECRET);
-  return sessionStore.issueSession({
+  const sessionManager = createSignedCookieSessionManager(authEnv.APP_SESSION_SECRET);
+  return sessionManager.issueSession({
     principal,
     ttlSeconds: authEnv.APP_SESSION_TTL_SECONDS
   });
@@ -18,8 +18,8 @@ export async function readAdminSession(token: string | undefined | null) {
   }
 
   const authEnv = getAuthPolicyEnv();
-  const sessionStore = createSignedCookieSessionStore(authEnv.APP_SESSION_SECRET);
-  return sessionStore.readSession(token);
+  const sessionManager = createSignedCookieSessionManager(authEnv.APP_SESSION_SECRET);
+  return sessionManager.readSession(token);
 }
 
 export function parseSessionCookie(cookieHeader: string | null) {

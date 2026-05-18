@@ -1,10 +1,12 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY package.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
-COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/schema/package.json packages/schema/package.json
+COPY packages/ports/package.json packages/ports/package.json
+COPY packages/core/package.json packages/core/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/ai-gateway/package.json packages/ai-gateway/package.json
 COPY packages/adapters/package.json packages/adapters/package.json
@@ -14,7 +16,7 @@ RUN npm install
 COPY . .
 RUN npm run build --workspace @neutrino/api
 
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

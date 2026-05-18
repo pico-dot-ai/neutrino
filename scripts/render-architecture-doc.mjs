@@ -16,9 +16,10 @@ export function renderArchitectureMarkdown(contract) {
       const adapters = port.requiredAdapters.map((adapter) => `  - \`${adapter}\``).join("\n");
       return [
         `### ${port.id}`,
-        `- Contract: \`${port.contractFile}\``,
+        `- Port: \`${port.portFile}\``,
+        `- Schema: \`${port.schemaFile}\``,
         "- Required adapters:",
-        adapters,
+        adapters || "  - None",
         `- Rule: ${port.swapRule}`
       ].join("\n");
     })
@@ -52,7 +53,9 @@ ${list(contract.principles)}
 
 ## Runtime Boundaries
 ${list(contract.runtimeBoundaries.apps)}
-- \`contractsRoot\`: \`${contract.runtimeBoundaries.contractsRoot}\`
+- \`schemaRoot\`: \`${contract.runtimeBoundaries.schemaRoot}\`
+- \`portsRoot\`: \`${contract.runtimeBoundaries.portsRoot}\`
+- \`coreRoot\`: \`${contract.runtimeBoundaries.coreRoot}\`
 - \`adaptersRoot\`: \`${contract.runtimeBoundaries.adaptersRoot}\`
 ${list(contract.runtimeBoundaries.sharedPackages)}
 

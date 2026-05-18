@@ -1,18 +1,14 @@
 import type {
-  AIProvider,
-  EmbedRequest,
-  EmbedResponse,
+  LanguageModelProvider
+} from "@neutrino/ports";
+import type {
   GenerateRequest,
   GenerateResponse,
   StreamEvent
-} from "../../contracts/src/ai-provider";
+} from "@neutrino/schema";
 
-export class AnthropicAdapter implements AIProvider {
+export class AnthropicAdapter implements LanguageModelProvider {
   async generate(_request: GenerateRequest): Promise<GenerateResponse> {
-    throw new Error("Not implemented.");
-  }
-
-  async embed(_request: EmbedRequest): Promise<EmbedResponse> {
     throw new Error("Not implemented.");
   }
 

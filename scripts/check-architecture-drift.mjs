@@ -36,8 +36,16 @@ async function checkRuntimeBoundaries(contract, failures) {
     }
   }
 
-  if (!(await exists(contract.runtimeBoundaries.contractsRoot))) {
-    failures.push(`Missing contracts root: ${contract.runtimeBoundaries.contractsRoot}`);
+  if (!(await exists(contract.runtimeBoundaries.schemaRoot))) {
+    failures.push(`Missing schema root: ${contract.runtimeBoundaries.schemaRoot}`);
+  }
+
+  if (!(await exists(contract.runtimeBoundaries.portsRoot))) {
+    failures.push(`Missing ports root: ${contract.runtimeBoundaries.portsRoot}`);
+  }
+
+  if (!(await exists(contract.runtimeBoundaries.coreRoot))) {
+    failures.push(`Missing core root: ${contract.runtimeBoundaries.coreRoot}`);
   }
 
   if (!(await exists(contract.runtimeBoundaries.adaptersRoot))) {
@@ -47,8 +55,11 @@ async function checkRuntimeBoundaries(contract, failures) {
 
 async function checkPorts(contract, failures) {
   for (const port of contract.ports) {
-    if (!(await exists(port.contractFile))) {
-      failures.push(`Missing contract file for port "${port.id}": ${port.contractFile}`);
+    if (!(await exists(port.portFile))) {
+      failures.push(`Missing port file for port "${port.id}": ${port.portFile}`);
+    }
+    if (!(await exists(port.schemaFile))) {
+      failures.push(`Missing schema file for port "${port.id}": ${port.schemaFile}`);
     }
     for (const adapterPath of port.requiredAdapters) {
       if (!(await exists(adapterPath))) {
@@ -129,7 +140,7 @@ async function checkNoDirectAdapterImports(contract, failures) {
       const content = await fs.readFile(path.join(repoRoot, file), "utf8");
       if (importPattern.test(content)) {
         failures.push(
-          `Direct adapter import found in ${file}. App code must import contracts, not adapters.`
+          `Direct adapter import found in ${file}. App code must import schema and ports, not adapters.`
         );
       }
     }

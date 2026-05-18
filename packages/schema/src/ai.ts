@@ -31,9 +31,3 @@ export type EmbedRequest = {
 export type EmbedResponse = {
   vectors: number[][];
 };
-
-export interface AIProvider {
-  generate(request: GenerateRequest): Promise<GenerateResponse>;
-  embed(request: EmbedRequest): Promise<EmbedResponse>;
-  stream(request: GenerateRequest): AsyncIterable<StreamEvent>;
-}

@@ -25,7 +25,7 @@ export default function HomePage() {
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
               Register OAuth apps, publish internal capabilities, and keep deployment
               ownership in each app repo. Neutrino handles identity, policy, and
-              usage governance with <code>pico_app_id</code> as the platform-wide key.
+              usage governance with <code>app_id</code> as the platform-wide key.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link href="/login">
@@ -46,7 +46,7 @@ export default function HomePage() {
             <h2 className="text-lg font-semibold tracking-tight">What ships in v1</h2>
             <ul className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
               <li>OAuth app registration and credential lifecycle</li>
-              <li>Internal capability registry for provider apps</li>
+              <li>Internal capability catalog for provider apps</li>
               <li>Admin-gated control plane with session-based login</li>
               <li>Starter container for launching new app repos</li>
             </ul>

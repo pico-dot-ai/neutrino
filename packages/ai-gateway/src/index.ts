@@ -1,8 +1,8 @@
 import OpenAI from "openai";
-import type { AIProvider } from "@neutrino/contracts";
+import type { LanguageModelProvider } from "@neutrino/ports";
 import OpenAIAdapter from "../../adapters/ai/openai-adapter.ts";
 
-export function createOpenAIProvider(apiKey: string): AIProvider {
+export function createOpenAILanguageModelProvider(apiKey: string): LanguageModelProvider {
   return new OpenAIAdapter(
     new OpenAI({
       apiKey

@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
 import { z } from "zod";
-import type { AIProvider, ChatMessage } from "@neutrino/contracts";
+import type { LanguageModelProvider } from "@neutrino/ports";
+import type { ChatMessage } from "@neutrino/schema";
 import { createPlatformControlPlane } from "@neutrino/platform-gateway";
 import type { ApiEnv } from "./env";
 
@@ -26,7 +27,7 @@ const registerOAuthAppSchema = z.object({
 });
 
 const updateOAuthAppSchema = z.object({
-  pico_app_id: z.string().min(1),
+  app_id: z.string().min(1),
   displayName: z.string().min(1).optional(),
   description: z.string().optional(),
   appType: z.enum(["consumer", "provider", "both"]).optional(),
@@ -35,18 +36,18 @@ const updateOAuthAppSchema = z.object({
 });
 
 const picoAppTargetSchema = z.object({
-  pico_app_id: z.string().min(1)
+  app_id: z.string().min(1)
 });
 
 const assignAppAdminSchema = z.object({
-  pico_app_id: z.string().min(1),
+  app_id: z.string().min(1),
   email: z.string().email()
 });
 
 const registerCapabilitySchema = z.object({
   name: z.string().min(1),
   version: z.string().min(1),
-  ownerPicoAppId: z.string().min(1),
+  ownerAppId: z.string().min(1),
   description: z.string().optional(),
   scopes: z.array(z.string().min(1)).optional(),
   limits: z
@@ -91,7 +92,7 @@ function isAuthorized(request: Request, env: ApiEnv) {
 }
 
 export function createAppHandler(options: {
-  aiProvider: AIProvider;
+  aiProvider: LanguageModelProvider;
   env: ApiEnv;
 }) {
   const controlPlane = createPlatformControlPlane();
@@ -163,21 +164,21 @@ export function createAppHandler(options: {
         controlPlane.usageLedger.track(`admin:${adminEmail}`);
 
         if (request.method === "GET" && pathname === "/v1/control-plane/oauth-apps") {
-          const apps = await controlPlane.oauthRegistry.listOAuthApps();
+          const apps = await controlPlane.oauthClientCatalog.listOAuthApps();
           return json(200, { apps });
         }
 
         if (request.method === "POST" && pathname === "/v1/control-plane/oauth-apps/register") {
           const payload = registerOAuthAppSchema.parse(await request.json());
-          const created = await controlPlane.oauthRegistry.registerOAuthApp(payload);
-          controlPlane.usageLedger.track(`oauth:register:${created.app.pico_app_id}`);
+          const created = await controlPlane.oauthClientCatalog.registerOAuthApp(payload);
+          controlPlane.usageLedger.track(`oauth:register:${created.app.app_id}`);
           return json(201, created);
         }
 
         if (request.method === "POST" && pathname === "/v1/control-plane/oauth-apps/update") {
           const payload = updateOAuthAppSchema.parse(await request.json());
-          const app = await controlPlane.oauthRegistry.updateOAuthApp(payload);
-          controlPlane.usageLedger.track(`oauth:update:${app.pico_app_id}`);
+          const app = await controlPlane.oauthClientCatalog.updateOAuthApp(payload);
+          controlPlane.usageLedger.track(`oauth:update:${app.app_id}`);
           return json(200, { app });
         }
 
@@ -186,8 +187,8 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/oauth-apps/rotate-credential"
         ) {
           const payload = picoAppTargetSchema.parse(await request.json());
-          const rotated = await controlPlane.oauthRegistry.rotateCredential(payload);
-          controlPlane.usageLedger.track(`oauth:rotate:${payload.pico_app_id}`);
+          const rotated = await controlPlane.oauthClientCatalog.rotateCredential(payload);
+          controlPlane.usageLedger.track(`oauth:rotate:${payload.app_id}`);
           return json(200, rotated);
         }
 
@@ -196,8 +197,8 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/oauth-apps/revoke-credential"
         ) {
           const payload = picoAppTargetSchema.parse(await request.json());
-          const app = await controlPlane.oauthRegistry.revokeCredential(payload);
-          controlPlane.usageLedger.track(`oauth:revoke:${payload.pico_app_id}`);
+          const app = await controlPlane.oauthClientCatalog.revokeCredential(payload);
+          controlPlane.usageLedger.track(`oauth:revoke:${payload.app_id}`);
           return json(200, { app });
         }
 
@@ -206,8 +207,8 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/oauth-apps/approve-production-activation"
         ) {
           const payload = picoAppTargetSchema.parse(await request.json());
-          const app = await controlPlane.oauthRegistry.approveProductionActivation(payload);
-          controlPlane.usageLedger.track(`oauth:approve:${payload.pico_app_id}`);
+          const app = await controlPlane.oauthClientCatalog.approveProductionActivation(payload);
+          controlPlane.usageLedger.track(`oauth:approve:${payload.app_id}`);
           return json(200, { app });
         }
 
@@ -216,13 +217,13 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/oauth-apps/assign-app-admin"
         ) {
           const payload = assignAppAdminSchema.parse(await request.json());
-          const app = await controlPlane.oauthRegistry.assignAppAdmin(payload);
-          controlPlane.usageLedger.track(`oauth:assign-admin:${payload.pico_app_id}`);
+          const app = await controlPlane.oauthClientCatalog.assignAppAdmin(payload);
+          controlPlane.usageLedger.track(`oauth:assign-admin:${payload.app_id}`);
           return json(200, { app });
         }
 
         if (request.method === "GET" && pathname === "/v1/control-plane/capabilities") {
-          const capabilities = await controlPlane.capabilityRegistry.listCapabilities();
+          const capabilities = await controlPlane.capabilityCatalog.listCapabilities();
           return json(200, { capabilities });
         }
 
@@ -231,7 +232,7 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/capabilities/register"
         ) {
           const payload = registerCapabilitySchema.parse(await request.json());
-          const capability = await controlPlane.capabilityRegistry.registerCapability(payload);
+          const capability = await controlPlane.capabilityCatalog.registerCapability(payload);
           controlPlane.usageLedger.track(`capability:register:${capability.capabilityId}`);
           return json(201, { capability });
         }
@@ -241,7 +242,7 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/capabilities/publish"
         ) {
           const payload = capabilityIdSchema.pick({ capabilityId: true }).parse(await request.json());
-          const capability = await controlPlane.capabilityRegistry.publishCapability(payload);
+          const capability = await controlPlane.capabilityCatalog.publishCapability(payload);
           controlPlane.usageLedger.track(`capability:publish:${capability.capabilityId}`);
           return json(200, { capability });
         }
@@ -251,7 +252,7 @@ export function createAppHandler(options: {
           pathname === "/v1/control-plane/capabilities/deprecate"
         ) {
           const payload = capabilityIdSchema.parse(await request.json());
-          const capability = await controlPlane.capabilityRegistry.deprecateCapability(payload);
+          const capability = await controlPlane.capabilityCatalog.deprecateCapability(payload);
           controlPlane.usageLedger.track(`capability:deprecate:${capability.capabilityId}`);
           return json(200, { capability });
         }
@@ -277,7 +278,7 @@ export function createAppHandler(options: {
 }
 
 export function createHttpServer(options: {
-  aiProvider: AIProvider;
+  aiProvider: LanguageModelProvider;
   env: ApiEnv;
 }) {
   const handler = createAppHandler(options);

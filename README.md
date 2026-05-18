@@ -1,15 +1,53 @@
 # neutrino
 
-Neutrino is an AI-first monorepo with a Vercel web client, a Cloud Run API, and contract-first adapters that keep infrastructure choices swappable.
+Neutrino is the working repo for picoAI's composable AI service platform.
+
+The product direction is to define, run, reuse, and govern AI systems through simple files, stable schema and ports, tenant-safe execution, and builder UIs that act as control planes over the same resources.
 
 ## Current Baseline
 - `apps/web`: Next.js App Router frontend, intended for Vercel
 - `apps/api`: typed Node service, intended for Cloud Run and portable to App Runner
-- `packages/contracts`: stable application ports and shared request/response types
+- `packages/schema` and `packages/ports`: stable application ports and shared request/response types
 - `packages/ui`: shared design system built on `shadcn/ui`
-- `packages/adapters`: infrastructure adapters behind contract ports
+- `packages/adapters`: infrastructure adapters behind ports
 - `packages/identity-gateway`: local identity + session gateway wrapper
-- `packages/platform-gateway`: control-plane registry gateway wrapper
+- `packages/platform-gateway`: control-plane catalog gateway wrapper
+
+## Product Direction
+- Services are the core reusable platform unit.
+- Apps are user-facing surfaces and control planes over services.
+- Agents are reusable actor services.
+- Skills are reusable behavioral and procedural modules.
+- Harnesses are reusable operational environments around agents, not eval runners.
+- Conversations are reusable human and multi-agent runtime primitives.
+- Evals are validation and governance modules attached to agents, harnesses, conversations, services, and apps.
+- Builder UIs must round-trip with file-defined resources instead of creating hidden app-specific resource structures.
+
+## First Implementation Direction
+The first serious implementation plan should prove one vertical path:
+
+`Tenant -> Project -> App manifest -> Agent service -> Skill -> Harness service -> LLM binding -> Conversation runtime -> Run record -> Trace -> Eval result`
+
+The first run should also include:
+- real auth under `auth.pico.ai`
+- local username/password auth with a migration path to Ory Kratos and SSO
+- hosted Postgres as durable system of record
+- pgvector as the first vector implementation
+- blob/artifact storage for uploaded and generated binary assets
+- explicit, scoped core memory records
+- catalog and resolver behavior for file-defined platform resources
+- service donation from one app/service to another consumer
+
+## Documentation Map
+- `AGENTS.md`: coding-agent working rules
+- `architecture/contract.json`: canonical architecture contract
+- `docs/architecture-canonical.md`: generated architecture view
+- `docs/architecture-foundation.md`: rationale and decision history
+- `docs/requirements-baseline.md`: requirement statements and statuses
+- `docs/platform-baseline.md`: platform baseline and first vertical milestone
+- `docs/deployment-baseline.md`: deployment and infrastructure assumptions
+
+Do not use `docs/data-structure-ref/` for the first implementation-plan setup. Those files are reserved for later task, calendar, and generalized item data modeling.
 
 ## Commands
 - `npm install`
@@ -22,6 +60,8 @@ Neutrino is an AI-first monorepo with a Vercel web client, a Cloud Run API, and 
 - `npm run architecture:check`
 
 ## Environment
+Use Node 24 for local development. The repo includes `.nvmrc` and requires `>=24.0.0` in `package.json`; Node 23 is not a supported line for the current ESLint, Vitest, and jsdom toolchain and will produce `EBADENGINE` warnings.
+
 The API requires:
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`

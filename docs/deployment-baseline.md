@@ -1,5 +1,7 @@
 # Deployment Baseline
 
+Operational issue history and recurring fixes are tracked in [docs/ops-known-issues.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/ops-known-issues.md).
+
 ## Web
 - Deploy [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web) to Vercel.
 - Configure:
@@ -39,6 +41,10 @@
 - Session-backed access must protect Admin Console and builder surfaces.
 
 ## API
+- Preflight checks before triggering deploy:
+  - Confirm `cloudbuild.yaml` shell variables are escaped as `$${...}` when used inside script steps.
+  - Confirm pre-install workspace `package.json` copies in [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile) include all `@neutrino/*` dependencies referenced by copied app manifests.
+  - Confirm API bundle strategy does not leave runtime imports to local workspace TS source packages.
 - Build the container from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
 - When using Cloud Build, the build context must be the repository root, not `apps/api`, because the Dockerfile copies workspace files from the monorepo root.
 - The included [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml) builds, pushes, updates the existing Cloud Run service image, and then verifies `/healthz`.

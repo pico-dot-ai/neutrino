@@ -5,5 +5,5 @@ export default defineConfig({
   format: ["esm"],
   target: "node24",
   outDir: "dist",
-  noExternal: ["@neutrino/ai-gateway", "@neutrino/ports", "@neutrino/schema"]
+  noExternal: [/^@neutrino\//]
 });

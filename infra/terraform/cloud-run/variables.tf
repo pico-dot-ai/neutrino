@@ -44,6 +44,10 @@ variable "api_proxy_secret_name" {
   type = string
 }
 
+variable "core_database_url_secret_name" {
+  type = string
+}
+
 variable "openai_model" {
   type    = string
   default = null
@@ -152,4 +156,64 @@ variable "artifact_registry_repository" {
 variable "api_image_name" {
   type    = string
   default = "neutrino-api"
+}
+
+variable "enable_self_managed_postgres" {
+  type    = bool
+  default = false
+}
+
+variable "postgres_instance_name" {
+  type    = string
+  default = "pico-postgres"
+}
+
+variable "postgres_zone" {
+  type    = string
+  default = "us-central1-a"
+}
+
+variable "postgres_machine_type" {
+  type    = string
+  default = "e2-small"
+}
+
+variable "postgres_disk_size_gb" {
+  type    = number
+  default = 20
+}
+
+variable "postgres_network" {
+  type    = string
+  default = "default"
+}
+
+variable "postgres_app_database" {
+  type    = string
+  default = "platform_prod"
+}
+
+variable "postgres_app_user" {
+  type    = string
+  default = "platform_user"
+}
+
+variable "postgres_password_secret_name" {
+  type    = string
+  default = "POSTGRES_APP_PASSWORD"
+}
+
+variable "postgres_container_image" {
+  type    = string
+  default = "pgvector/pgvector:pg17"
+}
+
+variable "serverless_vpc_connector_name" {
+  type    = string
+  default = "pico-serverless"
+}
+
+variable "serverless_vpc_connector_cidr" {
+  type    = string
+  default = "10.8.0.0/28"
 }

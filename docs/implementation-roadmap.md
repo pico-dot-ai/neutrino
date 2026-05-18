@@ -27,7 +27,7 @@ Out of scope for this phase:
 | Phase | Name | Status | Exit Criteria |
 | --- | --- | --- | --- |
 | 1 | Rename and Restructure Foundation | Done | `packages/contracts` removed, `schema/ports/core` shape adopted, imports updated, architecture check + typecheck pass |
-| 2 | Core Persistence (Postgres canonical) | In Progress | `@neutrino/core` repositories + migrations in place, clean DB bootstrap validated |
+| 2 | Core Persistence (Postgres canonical) | In Progress | `@neutrino/core` repositories + migrations in place, production-managed Postgres provisioning + secret wiring + migration promotion flow validated |
 | 3 | Infrastructure Ports and Adapters | In Progress | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
 | 4 | Catalog, Bindings, and Manifests | In Progress | manifests validate, resources register, bindings resolve runtime plan |
 | 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
@@ -65,10 +65,34 @@ Target outcomes:
 Validation:
 - Repository tests pass
 - Clean database migrate/bootstrap path passes
+- Managed Postgres provisioning for deploy environments is codified in IaC
+- Cloud Run runtime has production secret wiring for `CORE_DATABASE_URL`/`DATABASE_URL`
+- Migration promotion path is defined and validated (staging then production)
 
 Current notes:
-- `packages/core` exists in working tree.
-- Migration/test completeness should be finalized before phase closure.
+- `packages/core` includes repositories and migration tooling.
+- Migration runner and status commands exist in `@neutrino/core` (`npm run migrate --workspace @neutrino/core` and `npm run migrate:status --workspace @neutrino/core`) using `CORE_DATABASE_URL` (or `DATABASE_URL`).
+- Validated on a clean local Postgres 17 instance with pgvector extension (`platform_stage` / `platform_user`), with migration `0001_core_foundation` applied and no pending migrations.
+- Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
+- Self-managed prototype Postgres now has Terraform scaffolding: Compute Engine VM, separate persistent data disk with destroy prevention, `pgvector/pgvector:pg17` container, Secret Manager password lookup, firewall rule, and Serverless VPC Access connector for Cloud Run.
+- Remaining Phase 2 closure work: apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
+
+### Phase 2 Prototype Profile (Temporary)
+- During concept validation, use self-managed Postgres + pgvector for staging/prod-like environments.
+- Keep the boundary portable:
+  - runtime uses only `CORE_DATABASE_URL`/`DATABASE_URL`
+  - no hardcoded provider-specific host/user naming in application code
+- Prototype deployment target:
+  - Postgres runs on a Terraform-managed Compute Engine VM, not Cloud Run.
+  - Cloud Run connects over a Serverless VPC Access connector.
+  - `CORE_DATABASE_URL` uses the VM private IP from Terraform output `postgres_internal_ip`.
+- Minimum required controls before calling Phase 2 complete:
+  - separate staging and production databases
+  - automated backup policy and at least one verified restore drill
+  - migration promotion path: staging migrate -> validate -> production backup -> production migrate
+  - documented rollback/recovery runbook for partial migration failures
+- Exit criterion from prototype profile:
+  - retain ability to switch to managed Postgres later without application-layer rewrites.
 
 ### Phase 3: Infrastructure Ports and Adapters
 Status: `In Progress`
@@ -170,6 +194,14 @@ Validation:
   - add `.github/workflows/deploy-api.yml` for push-to-main production deploy orchestration
   - use GCP Workload Identity Federation for GitHub Actions auth
   - prevent double deploy by disabling direct Cloud Build GitHub trigger once Actions orchestration is active
+- Define and implement a staging promotion process for both application deploys and database changes before production rollout.
+- Goal: prevent data loss and reduce production rollout risk through pre-production validation and controlled promotion.
+- Scope when prioritized:
+  - separate staging environment for API/web deploy validation with production-like config
+  - branch-to-environment promotion strategy (for example: feature branch -> preview, `main` -> staging, version tag or release branch -> production) with explicit merge/promotion rules
+  - migration workflow with explicit forward/rollback strategy and pre-deploy backup/snapshot requirements
+  - promotion gates (health checks, smoke tests, migration verification) before production deploy
+  - documented recovery runbook for failed rollout and partial migration states
 
 ## Roadmap Update Rules
 - Update this file whenever a phase status changes or acceptance criteria change.

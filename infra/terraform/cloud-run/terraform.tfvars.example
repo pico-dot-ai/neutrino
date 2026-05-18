@@ -4,6 +4,7 @@ service_name                = "neutrino-api"
 container_image             = "us-central1-docker.pkg.dev/your-gcp-project-id/cloud-run-source-deploy/neutrino-api:bootstrap"
 openai_api_key_secret_name  = "OPENAI_API_KEY"
 api_proxy_secret_name       = "API_PROXY_SHARED_SECRET"
+core_database_url_secret_name = "CORE_DATABASE_URL"
 runtime_service_account_email = "695331385631-compute@developer.gserviceaccount.com"
 allow_public_invoker        = false
 invoker_iam_disabled        = true
@@ -14,6 +15,19 @@ github_deploy_branch_regex  = "^main$"
 artifact_registry_hostname  = "us-central1-docker.pkg.dev"
 artifact_registry_repository = "cloud-run-source-deploy"
 api_image_name              = "neutrino-api"
+
+enable_self_managed_postgres = true
+postgres_instance_name       = "pico-postgres"
+postgres_zone                = "us-central1-a"
+postgres_machine_type        = "e2-small"
+postgres_disk_size_gb        = 20
+postgres_network             = "default"
+postgres_app_database        = "platform_prod"
+postgres_app_user            = "platform_user"
+postgres_password_secret_name = "POSTGRES_APP_PASSWORD"
+postgres_container_image     = "pgvector/pgvector:pg17"
+serverless_vpc_connector_name = "pico-serverless"
+serverless_vpc_connector_cidr = "10.8.0.0/28"
 
 # Terraform backend defaults are committed in backend.tf:
 # - bucket = "neutrino-terraform-state"

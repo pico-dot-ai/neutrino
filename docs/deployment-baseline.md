@@ -62,6 +62,10 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
 - Provide secrets in Secret Manager for:
   - `OPENAI_API_KEY`
   - `API_PROXY_SHARED_SECRET`
+  - `CORE_DATABASE_URL`
+  - `POSTGRES_APP_PASSWORD`
+- `CORE_DATABASE_URL` should be a full Postgres connection string for the target environment database.
+- Terraform now manages a Cloud Run migration job (`${service_name}-core-migrate`) and Cloud Build runs it with the just-built image before updating the API service.
 - Apply Terraform once before using the Cloud Build trigger continuously.
 - If the service already exists, import it into Terraform state first instead of recreating it.
 - Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/terraform.tfvars.example) as the starting point for variables.
@@ -80,6 +84,7 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
   - `_AR_REPOSITORY=cloud-run-source-deploy`
   - `_IMAGE_NAME=neutrino-api`
   - `_SERVICE_NAME=neutrino-api`
+  - `_MIGRATION_JOB=neutrino-api-core-migrate`
   - `_DEPLOY_REGION=us-central1`
 - Backend deployment from GitHub should use the Terraform-managed Cloud Build trigger in [infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf), enabled with `enable_github_deploy_trigger = true`.
 - The trigger watches pushes to `main` on `pico-dot-ai/neutrino` and runs [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
@@ -97,6 +102,26 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
 - pgvector is the initial vector implementation, not a permanent platform assumption.
 - Vector and retrieval access must stay behind replaceable ports so Qdrant, Pinecone, object storage indexes, or external retrieval APIs can be introduced later.
 - Database schema changes must be explicit, versioned migrations.
+- Temporary prototype profile: self-managed Postgres is acceptable while proving platform concepts, provided rollout safety controls are in place.
+- The self-managed prototype database runs on a Terraform-managed Compute Engine VM, not inside Cloud Run.
+- Cloud Run remains the stateless API runtime and reaches the database through a Serverless VPC Access connector.
+- The Postgres VM uses:
+  - image: `pgvector/pgvector:pg17`
+  - database: `platform_prod`
+  - user: `platform_user`
+  - password secret: `POSTGRES_APP_PASSWORD`
+  - data disk: Terraform-managed persistent disk with destroy prevention
+  - private host: Terraform output `postgres_internal_ip`
+- The deployed `CORE_DATABASE_URL` shape is:
+  ```text
+  postgresql://platform_user:<POSTGRES_APP_PASSWORD>@<postgres_internal_ip>:5432/platform_prod?sslmode=disable
+  ```
+- Required controls for the self-managed prototype profile:
+  - separate staging and production databases
+  - backup automation plus at least one restore verification run
+  - migration promotion flow: staging migrate -> validate -> production backup -> production migrate
+  - documented rollback/runbook for failed or partial migrations
+- Keep runtime DB configuration fully environment-driven through `CORE_DATABASE_URL` or `DATABASE_URL` to preserve a clean path to managed Postgres later.
 
 ## Blob and Artifact Storage
 - Blob/artifact storage is required as a platform service boundary.
@@ -109,3 +134,14 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
 - Use the standard `OPENAI_API_KEY` environment variable.
 - In Google Cloud Run, store it in Secret Manager and mount it into the service environment through Terraform with env names exactly `OPENAI_API_KEY` and `API_PROXY_SHARED_SECRET`.
 - In Vercel, do not expose the OpenAI key; only the Cloud Run backend should have it.
+
+## Remaining Manual Google Cloud Step
+- Before the deploy pipeline can run end-to-end, create and populate these Secret Manager secrets in the target GCP project:
+  - `OPENAI_API_KEY`
+  - `API_PROXY_SHARED_SECRET`
+  - `POSTGRES_APP_PASSWORD`
+  - `CORE_DATABASE_URL`
+- `POSTGRES_APP_PASSWORD` must exist before the self-managed Postgres VM can initialize successfully.
+- Terraform creates the `POSTGRES_APP_PASSWORD` secret metadata only; add the secret value as a Secret Manager version outside Terraform so the password is not written into Terraform state.
+- `CORE_DATABASE_URL` is created after Terraform reports `postgres_internal_ip`, because that private IP is part of the connection string.
+- No further code changes are required for secret wiring after those secrets exist with current values.

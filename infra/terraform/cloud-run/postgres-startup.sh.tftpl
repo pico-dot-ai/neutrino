@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+apt-get update
+apt-get install -y docker.io
+systemctl enable --now docker
+
+DATA_DEVICE="/dev/disk/by-id/google-postgres-data"
+while [ ! -e "$${DATA_DEVICE}" ]; do
+  sleep 2
+done
+
+if ! blkid "$${DATA_DEVICE}" >/dev/null 2>&1; then
+  mkfs.ext4 -F "$${DATA_DEVICE}"
+fi
+
+mkdir -p /mnt/postgres
+if ! mountpoint -q /mnt/postgres; then
+  mount "$${DATA_DEVICE}" /mnt/postgres
+fi
+
+if ! grep -q "$${DATA_DEVICE} /mnt/postgres" /etc/fstab; then
+  echo "$${DATA_DEVICE} /mnt/postgres ext4 defaults,nofail 0 2" >> /etc/fstab
+fi
+
+mkdir -p /mnt/postgres/data
+
+POSTGRES_PASSWORD=""
+for attempt in $(seq 1 300); do
+  if POSTGRES_PASSWORD="$(gcloud secrets versions access latest --secret="${password_secret_name}" --project="${project_id}" 2>/dev/null)"; then
+    break
+  fi
+  echo "Waiting for Secret Manager value ${password_secret_name}..."
+  sleep 10
+done
+
+if [ -z "$${POSTGRES_PASSWORD}" ]; then
+  echo "Missing Secret Manager value ${password_secret_name}; add a secret version and restart the VM."
+  exit 1
+fi
+
+docker rm -f pico-postgres || true
+docker pull "${container_image}"
+docker run -d \
+  --name pico-postgres \
+  --restart unless-stopped \
+  -p 5432:5432 \
+  -v /mnt/postgres/data:/var/lib/postgresql/data \
+  -e POSTGRES_USER="${app_user}" \
+  -e POSTGRES_PASSWORD="$${POSTGRES_PASSWORD}" \
+  -e POSTGRES_DB="${app_database}" \
+  "${container_image}"
+
+for attempt in $(seq 1 60); do
+  if docker exec pico-postgres pg_isready -U "${app_user}" -d "${app_database}" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+docker exec \
+  -e PGPASSWORD="$${POSTGRES_PASSWORD}" \
+  pico-postgres \
+  psql -U "${app_user}" -d "${app_database}" -c "CREATE EXTENSION IF NOT EXISTS vector;"

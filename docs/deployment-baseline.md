@@ -105,6 +105,7 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
 - Temporary prototype profile: self-managed Postgres is acceptable while proving platform concepts, provided rollout safety controls are in place.
 - The self-managed prototype database runs on a Terraform-managed Compute Engine VM, not inside Cloud Run.
 - Cloud Run remains the stateless API runtime and reaches the database through a Serverless VPC Access connector.
+- The private Postgres VM uses Cloud NAT for outbound package/image downloads during bootstrap.
 - The Postgres VM uses:
   - image: `pgvector/pgvector:pg17`
   - database: `platform_prod`

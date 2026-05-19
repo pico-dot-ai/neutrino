@@ -114,6 +114,22 @@ resource "google_compute_firewall" "postgres_from_serverless" {
   ]
 }
 
+resource "google_compute_router" "postgres_nat" {
+  count   = var.enable_self_managed_postgres ? 1 : 0
+  name    = "${var.postgres_instance_name}-router"
+  network = var.postgres_network
+  region  = var.region
+}
+
+resource "google_compute_router_nat" "postgres_nat" {
+  count                              = var.enable_self_managed_postgres ? 1 : 0
+  name                               = "${var.postgres_instance_name}-nat"
+  router                             = google_compute_router.postgres_nat[0].name
+  region                             = google_compute_router.postgres_nat[0].region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
 resource "google_cloud_run_v2_service" "api" {
   name                 = var.service_name
   location             = var.region
@@ -229,13 +245,10 @@ resource "google_cloud_run_v2_job" "core_migrate" {
         image = var.container_image
         name  = var.container_name
         command = [
-          "npm"
+          "node"
         ]
         args = [
-          "run",
-          "migrate",
-          "--workspace",
-          "@neutrino/core"
+          "apps/api/dist/migrate.js"
         ]
 
         env {

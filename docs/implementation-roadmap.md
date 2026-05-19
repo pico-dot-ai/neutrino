@@ -74,7 +74,7 @@ Current notes:
 - Migration runner and status commands exist in `@neutrino/core` (`npm run migrate --workspace @neutrino/core` and `npm run migrate:status --workspace @neutrino/core`) using `CORE_DATABASE_URL` (or `DATABASE_URL`).
 - Validated on a clean local Postgres 17 instance with pgvector extension (`platform_stage` / `platform_user`), with migration `0001_core_foundation` applied and no pending migrations.
 - Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
-- Self-managed prototype Postgres now has Terraform scaffolding: Compute Engine VM, separate persistent data disk with destroy prevention, `pgvector/pgvector:pg17` container, Secret Manager password lookup, firewall rule, and Serverless VPC Access connector for Cloud Run.
+- Self-managed prototype Postgres now has Terraform scaffolding: Compute Engine VM, separate persistent data disk with destroy prevention, Cloud NAT for private VM outbound bootstrap, `pgvector/pgvector:pg17` container, Secret Manager password lookup, firewall rule, and Serverless VPC Access connector for Cloud Run.
 - Remaining Phase 2 closure work: apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
 
 ### Phase 2 Prototype Profile (Temporary)

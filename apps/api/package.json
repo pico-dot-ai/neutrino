@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@neutrino/ai-gateway": "0.1.0",
+    "@neutrino/core": "0.1.0",
     "@neutrino/platform-gateway": "0.1.0",
     "@neutrino/ports": "0.1.0",
     "@neutrino/schema": "0.1.0",

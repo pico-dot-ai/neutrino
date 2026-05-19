@@ -12,7 +12,17 @@ type FormState =
   | { status: "success" }
   | { status: "error"; message: string };
 
-export function FeedbackForm() {
+type FeedbackFormClassNames = {
+  form: string;
+  inputWrap: string;
+  status: string;
+  statusVisible: string;
+  submit: string;
+  submitActive: string;
+  submitInactive: string;
+};
+
+export function FeedbackForm({ classNames }: { classNames: FeedbackFormClassNames }) {
   const [email, setEmail] = useState("");
   const [formState, setFormState] = useState<FormState>({ status: "idle" });
   const hasMessage = useMemo(() => email.trim().length > 0, [email]);
@@ -137,9 +147,9 @@ export function FeedbackForm() {
   }
 
   return (
-    <form className="landing-feedback-form" onSubmit={handleSubmit} noValidate>
+    <form className={classNames.form} onSubmit={handleSubmit} noValidate>
       <fieldset disabled={isDisabled} aria-busy={isDisabled}>
-        <div className="landing-feedback-input">
+        <div className={classNames.inputWrap}>
           <input
             id="feedback-message"
             name="message"
@@ -159,7 +169,9 @@ export function FeedbackForm() {
               id="feedback-status"
               role="status"
               aria-live="polite"
-              className={`landing-feedback-status ${isStatusVisible ? "is-visible" : ""}`}
+              className={`${classNames.status} ${
+                isStatusVisible ? classNames.statusVisible : ""
+              }`}
             >
               {statusMessage}
             </span>
@@ -170,8 +182,8 @@ export function FeedbackForm() {
           id="composer-submit-button"
           aria-label="Send prompt"
           data-testid="send-button"
-          className={`landing-feedback-submit ${
-            hasMessage ? "is-active" : "is-inactive"
+          className={`${classNames.submit} ${
+            hasMessage ? classNames.submitActive : classNames.submitInactive
           }`}
           type="submit"
           disabled={isDisabled}

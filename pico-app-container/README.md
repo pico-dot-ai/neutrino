@@ -19,6 +19,12 @@ Starter Version UUID: `019e3909-5457-7a5e-a5ad-4eae2ca882d9`
 - `pico.app.yaml`: platform registration manifest template
 - `infra/terraform/cloud-run`: IaC baseline for backend runtime
 
+This starter intentionally follows the current Neutrino naming direction:
+- use `schema` for shared app records/types
+- use `ports` for replaceable interfaces
+- use `adapters` for concrete implementations
+- do not use a `contracts` package
+
 ## Setup
 1. Copy this folder into a new repository.
 2. Run `npm install`.

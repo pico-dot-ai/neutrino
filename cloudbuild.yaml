@@ -4,7 +4,16 @@ steps:
     args:
       - -ceu
       - |
-        IMAGE_TAG="${SHORT_SHA:-manual-$$(date +%Y%m%d%H%M%S)}"
+        IMAGE_TAG="${SHORT_SHA}"
+        if [ -z "$${IMAGE_TAG}" ] || [ "$${IMAGE_TAG}" = '$${SHORT_SHA}' ]; then
+          IMAGE_TAG="${COMMIT_SHA}"
+        fi
+        if [ -n "$${IMAGE_TAG}" ] && [ "$${IMAGE_TAG}" != '$${COMMIT_SHA}' ] && [ "$${#IMAGE_TAG}" -gt 7 ]; then
+          IMAGE_TAG="$${IMAGE_TAG:0:7}"
+        fi
+        if [ -z "$${IMAGE_TAG}" ] || [ "$${IMAGE_TAG}" = '$${COMMIT_SHA}' ]; then
+          IMAGE_TAG="manual-$$(date +%Y%m%d%H%M%S)"
+        fi
         IMAGE_REF="${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:$${IMAGE_TAG}"
         echo "$${IMAGE_REF}" > /workspace/image_ref.txt
         docker build -f apps/api/Dockerfile -t "$${IMAGE_REF}" .

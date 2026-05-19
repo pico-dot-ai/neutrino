@@ -36,6 +36,8 @@ resource "google_vpc_access_connector" "serverless" {
   region        = var.region
   network       = var.postgres_network
   ip_cidr_range = var.serverless_vpc_connector_cidr
+  min_instances = var.serverless_vpc_connector_min_instances
+  max_instances = var.serverless_vpc_connector_max_instances
 }
 
 resource "google_compute_disk" "postgres_data" {

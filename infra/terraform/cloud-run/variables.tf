@@ -217,3 +217,13 @@ variable "serverless_vpc_connector_cidr" {
   type    = string
   default = "10.8.0.0/28"
 }
+
+variable "serverless_vpc_connector_min_instances" {
+  type    = number
+  default = 2
+}
+
+variable "serverless_vpc_connector_max_instances" {
+  type    = number
+  default = 3
+}

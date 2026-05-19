@@ -12,24 +12,23 @@ steps:
       - push
       - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - jobs
-      - update
-      - ${_MIGRATION_JOB}
-      - --region
-      - ${_DEPLOY_REGION}
-      - --image
-      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+      - -ceu
+      - |
+        MIGRATION_JOB="${_MIGRATION_JOB:-${_SERVICE_NAME}-core-migrate}"
+        gcloud run jobs update "${MIGRATION_JOB}" \
+          --region "${_DEPLOY_REGION}" \
+          --image "${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - jobs
-      - execute
-      - ${_MIGRATION_JOB}
-      - --region
-      - ${_DEPLOY_REGION}
-      - --wait
+      - -ceu
+      - |
+        MIGRATION_JOB="${_MIGRATION_JOB:-${_SERVICE_NAME}-core-migrate}"
+        gcloud run jobs execute "${MIGRATION_JOB}" \
+          --region "${_DEPLOY_REGION}" \
+          --wait
   - name: gcr.io/cloud-builders/gcloud
     args:
       - run

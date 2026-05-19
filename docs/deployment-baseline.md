@@ -71,7 +71,7 @@ API-specific checks before Cloud Build:
 - Confirm [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml) escapes Cloud Build shell variables as `$${...}` inside script steps.
 - Confirm [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile) copies workspace package manifests before `npm install` for every `@neutrino/*` dependency referenced by copied app manifests.
 - Confirm the API bundle does not leave runtime imports to local workspace TypeScript source packages.
-- Keep `/healthz`, `/readyz`, and `/v1/chat` available on deployable API builds.
+- Keep `/health`, `/readyz`, and `/v1/chat` available on deployable API builds. `/healthz` may remain as compatibility alias, but deployment gating uses `/health`.
 
 ## Environment Variables and Secrets
 
@@ -224,7 +224,7 @@ Cloud Build does this sequence:
 4. Execute the migration job and wait for completion.
 5. Update the Cloud Run service to the new image.
 6. Read the service URL.
-7. Verify `GET /healthz`.
+7. Verify `GET /health`.
 
 Required Cloud Build trigger substitutions:
 
@@ -235,7 +235,7 @@ Required Cloud Build trigger substitutions:
 - `_MIGRATION_JOB=neutrino-api-core-migrate`
 - `_DEPLOY_REGION=us-central1`
 
-The Terraform-managed trigger watches pushes to `main` on `pico-dot-ai/neutrino` when `enable_github_deploy_trigger = true`. Its file filter must include API source, shared packages, migrations, workspace manifests, TypeScript config, and [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml). The Cloud Build GitHub App or Cloud Build repository connection must be connected once before Terraform can create or use the trigger.
+The Terraform-managed v2 trigger (`neutrino-api-main-deploy`) watches pushes to `main` on `pico-dot-ai/neutrino` when `enable_github_deploy_trigger = true`. It uses repository events from `projects/neutrino-491317/locations/us-central1/connections/neutrino-github/repositories/neutrino`. Its file filter must include API source, shared packages, migrations, workspace manifests, TypeScript config, and [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
 
 Manual Cloud Build deploy from the current checkout:
 
@@ -335,7 +335,7 @@ After every API deploy, verify the deployed service directly:
 
 ```sh
 SERVICE_URL="$(gcloud run services describe neutrino-api --region=us-central1 --format='value(status.url)')"
-curl -fsS "$SERVICE_URL/healthz"
+curl -fsS "$SERVICE_URL/health"
 curl -fsS "$SERVICE_URL/readyz"
 ```
 

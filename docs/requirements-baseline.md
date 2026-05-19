@@ -46,7 +46,7 @@ Build picoAI as a composable AI service platform: a system for defining, running
 | ID | Status | Requirement |
 | --- | --- | --- |
 | FR-001 | Confirmed | The system must provide a web client in `apps/web` built with Next.js App Router. |
-| FR-002 | Confirmed | The system must provide an API service in `apps/api` that exposes `/v1/chat`, `/healthz`, and `/readyz`. |
+| FR-002 | Confirmed | The system must provide an API service in `apps/api` that exposes `/v1/chat`, `/health`, and `/readyz`. |
 | FR-003 | Confirmed | The web app must proxy chat requests through its own `/api/chat` surface rather than calling model providers directly. |
 | FR-004 | Confirmed | Application code must interact with infrastructure through ports rather than direct adapter imports. |
 | FR-005 | Confirmed | The frontend must use the shared design system in `packages/ui`, built on `shadcn/ui`, instead of introducing a second component system. |

@@ -65,7 +65,7 @@
   <rect class="chip" x="550" y="250" width="360" height="72"/>
   <text class="label" x="572" y="276">apps/api on Cloud Run</text>
   <text class="small" x="572" y="297">Stateless API runtime, portable Docker contract</text>
-  <text class="code" x="572" y="314">/v1/chat  /healthz  /readyz</text>
+  <text class="code" x="572" y="314">/v1/chat  /health  /readyz</text>
 
   <rect class="chip" x="550" y="344" width="360" height="54"/>
   <text class="label" x="572" y="371">Gateway packages</text>

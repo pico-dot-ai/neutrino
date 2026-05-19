@@ -4,7 +4,7 @@ steps:
     args:
       - -ceu
       - |
-        IMAGE_TAG="$${SHORT_SHA:-manual-$$(date +%Y%m%d%H%M%S)}"
+        IMAGE_TAG="${SHORT_SHA:-manual-$$(date +%Y%m%d%H%M%S)}"
         IMAGE_REF="${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:$${IMAGE_TAG}"
         echo "$${IMAGE_REF}" > /workspace/image_ref.txt
         docker build -f apps/api/Dockerfile -t "$${IMAGE_REF}" .

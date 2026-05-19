@@ -40,7 +40,7 @@
 
 ## Delivery Expectations
 - Keep environment contracts explicit with runtime validation and documented variables.
-- Maintain `/healthz` and `/readyz` endpoints for deployable services.
+- Maintain `/health` and `/readyz` endpoints for deployable services. `/healthz` may remain as compatibility alias but is not deployment-gating.
 - Add or update tests for behavior changes when the surface is stable enough to test.
 - Avoid over-engineering. Shipping a narrow, well-factored slice is better than building for hypothetical future breadth.
 

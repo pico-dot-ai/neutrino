@@ -180,9 +180,9 @@
   backdrop-filter: saturate(150%) blur(14px);
   background: linear-gradient(
     to top,
-    rgba(247, 247, 249, 0.5) 0%,
-    rgba(247, 247, 249, 0.68) 48%,
-    rgba(247, 247, 249, 0.78) 72%,
+    rgba(247, 247, 249, 0.4) 0%,
+    rgba(247, 247, 249, 0.63) 48%,
+    rgba(247, 247, 249, 0.76) 72%,
     rgba(247, 247, 249, 0.88) 100%
   );
   padding-top: env(safe-area-inset-top, 0);

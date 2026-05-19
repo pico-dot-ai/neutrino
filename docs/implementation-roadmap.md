@@ -202,6 +202,14 @@ Validation:
   - migration workflow with explicit forward/rollback strategy and pre-deploy backup/snapshot requirements
   - promotion gates (health checks, smoke tests, migration verification) before production deploy
   - documented recovery runbook for failed rollout and partial migration states
+- Add DB selection by use case (single system-of-record plus optional specialized stores).
+- Goal: define when to keep Postgres-only versus when to introduce a second datastore for bounded capabilities.
+- Scope when prioritized:
+  - define decision thresholds for adding a second datastore (measured performance bottlenecks, capability gaps, or compliance/isolation requirements)
+  - assign canonical ownership boundaries (transactional record in Postgres, specialized ownership in secondary store only where justified)
+  - define environment contract for optional secondary datastores (for example `VECTOR_DATABASE_URL`, `ANALYTICS_DATABASE_URL`) while preserving `CORE_DATABASE_URL` as primary
+  - require adapter/port isolation so app/domain code does not import concrete datastore SDKs directly
+  - define migration and rollback playbook for introducing and removing secondary stores
 
 ## Roadmap Update Rules
 - Update this file whenever a phase status changes or acceptance criteria change.

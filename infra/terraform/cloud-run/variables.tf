@@ -143,6 +143,16 @@ variable "github_deploy_branch_regex" {
   default = "^main$"
 }
 
+variable "github_connection_name" {
+  type    = string
+  default = "neutrino-github"
+}
+
+variable "github_repository_name" {
+  type    = string
+  default = "neutrino"
+}
+
 variable "artifact_registry_hostname" {
   type    = string
   default = "us-central1-docker.pkg.dev"

@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1220" viewBox="0 0 1800 1220" role="img" aria-labelledby="title desc">
+  <title id="title">Neutrino Intended Platform Architecture</title>
+  <desc id="desc">Architecture diagram for Neutrino as a composable AI service platform with web control surfaces, Cloud Run API, catalog and resolver, reusable agent runtime, core persistence, adapters, external providers, and deployment automation.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2f5f6f"/>
+    </marker>
+    <marker id="arrow-muted" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#72818a"/>
+    </marker>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#10252d" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f4ed; }
+      .title { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 44px; font-weight: 760; fill: #162a32; }
+      .subtitle { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 20px; fill: #52626b; }
+      .section-title { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 22px; font-weight: 760; fill: #17333c; }
+      .label { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 17px; font-weight: 700; fill: #17333c; }
+      .small { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; fill: #4e5c63; }
+      .tiny { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; fill: #66747c; }
+      .code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13px; fill: #3a4a51; }
+      .panel { fill: #ffffff; stroke: #cad7d9; stroke-width: 1.5; rx: 8; filter: url(#shadow); }
+      .lane { fill: #edf6f5; stroke: #b9d0cf; stroke-width: 1.5; rx: 8; }
+      .core { fill: #fff7df; stroke: #e3c46b; stroke-width: 1.7; rx: 8; }
+      .runtime { fill: #eaf1ff; stroke: #b3c5ea; stroke-width: 1.5; rx: 8; }
+      .data { fill: #f0f7e8; stroke: #b8d29c; stroke-width: 1.5; rx: 8; }
+      .adapter { fill: #fbf0f3; stroke: #deb3bf; stroke-width: 1.5; rx: 8; }
+      .deploy { fill: #eef0f8; stroke: #c0c5df; stroke-width: 1.5; rx: 8; }
+      .chip { fill: #f9fbfb; stroke: #d4dddf; stroke-width: 1.2; rx: 7; }
+      .arrow { stroke: #2f5f6f; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .arrow-muted { stroke: #72818a; stroke-width: 2; fill: none; marker-end: url(#arrow-muted); stroke-dasharray: 7 7; }
+      .divider { stroke: #d7dddc; stroke-width: 1.2; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1800" height="1220"/>
+
+  <text class="title" x="70" y="76">Neutrino Intended Platform Architecture</text>
+  <text class="subtitle" x="72" y="112">Composable AI service platform: file-defined resources, reusable services, tenant-safe runtime, replaceable adapters, and push-to-deploy infrastructure.</text>
+
+  <rect class="panel" x="55" y="145" width="1690" height="980"/>
+
+  <!-- User and app surfaces -->
+  <rect class="lane" x="90" y="185" width="360" height="315"/>
+  <text class="section-title" x="115" y="224">Users and Control Surfaces</text>
+
+  <rect class="chip" x="120" y="250" width="300" height="58"/>
+  <text class="label" x="142" y="276">Humans and teams</text>
+  <text class="small" x="142" y="296">Admins, developers, operators, end users</text>
+
+  <rect class="chip" x="120" y="330" width="300" height="72"/>
+  <text class="label" x="142" y="356">apps/web on Vercel</text>
+  <text class="small" x="142" y="377">Admin console, login, builder UI, chat</text>
+  <text class="code" x="142" y="394">app_id keyed surfaces</text>
+
+  <rect class="chip" x="120" y="425" width="300" height="52"/>
+  <text class="label" x="142" y="451">File-defined resources</text>
+  <text class="small" x="142" y="471">Manifests round-trip with builder UIs</text>
+
+  <!-- API boundary -->
+  <rect class="runtime" x="520" y="185" width="420" height="315"/>
+  <text class="section-title" x="545" y="224">Runtime Boundary</text>
+
+  <rect class="chip" x="550" y="250" width="360" height="72"/>
+  <text class="label" x="572" y="276">apps/api on Cloud Run</text>
+  <text class="small" x="572" y="297">Stateless API runtime, portable Docker contract</text>
+  <text class="code" x="572" y="314">/v1/chat  /healthz  /readyz</text>
+
+  <rect class="chip" x="550" y="344" width="360" height="54"/>
+  <text class="label" x="572" y="371">Gateway packages</text>
+  <text class="small" x="572" y="391">platform-gateway, identity-gateway, ai-gateway</text>
+
+  <rect class="chip" x="550" y="421" width="360" height="56"/>
+  <text class="label" x="572" y="448">Stable schema and ports</text>
+  <text class="code" x="572" y="469">packages/schema + packages/ports</text>
+
+  <!-- Core platform -->
+  <rect class="core" x="1010" y="185" width="655" height="315"/>
+  <text class="section-title" x="1035" y="224">Core Platform Control Plane</text>
+
+  <rect class="chip" x="1040" y="250" width="285" height="92"/>
+  <text class="label" x="1062" y="276">Catalog and resolver</text>
+  <text class="small" x="1062" y="298">Apps, services, capabilities, OAuth clients</text>
+  <text class="small" x="1062" y="318">Bindings, versions, permissions</text>
+  <text class="code" x="1062" y="335">runtime execution plan</text>
+
+  <rect class="chip" x="1350" y="250" width="285" height="92"/>
+  <text class="label" x="1372" y="276">Platform core concerns</text>
+  <text class="small" x="1372" y="298">Auth, policy, invocation, memory</text>
+  <text class="small" x="1372" y="318">Artifacts, observability, cost, audit</text>
+  <text class="code" x="1372" y="335">tenant-safe scope metadata</text>
+
+  <rect class="chip" x="1040" y="365" width="285" height="88"/>
+  <text class="label" x="1062" y="391">Service donation</text>
+  <text class="small" x="1062" y="413">One app exposes reusable services</text>
+  <text class="small" x="1062" y="433">Another app or agent consumes them</text>
+
+  <rect class="chip" x="1350" y="365" width="285" height="88"/>
+  <text class="label" x="1372" y="391">Governance modules</text>
+  <text class="small" x="1372" y="413">Policies, evals, traces, run records</text>
+  <text class="small" x="1372" y="433">Attached to agents, apps, services</text>
+
+  <!-- Vertical path -->
+  <rect class="runtime" x="90" y="555" width="1000" height="210"/>
+  <text class="section-title" x="115" y="594">First Intended Vertical Path</text>
+
+  <rect class="chip" x="120" y="625" width="120" height="56"/>
+  <text class="label" x="139" y="651">Tenant</text>
+  <text class="tiny" x="139" y="671">scope</text>
+
+  <rect class="chip" x="265" y="625" width="135" height="56"/>
+  <text class="label" x="286" y="651">Project</text>
+  <text class="tiny" x="286" y="671">workspace</text>
+
+  <rect class="chip" x="425" y="625" width="145" height="56"/>
+  <text class="label" x="446" y="651">App manifest</text>
+  <text class="tiny" x="446" y="671">file-defined</text>
+
+  <rect class="chip" x="595" y="625" width="145" height="56"/>
+  <text class="label" x="616" y="651">Agent service</text>
+  <text class="tiny" x="616" y="671">reusable unit</text>
+
+  <rect class="chip" x="765" y="625" width="115" height="56"/>
+  <text class="label" x="786" y="651">Skill</text>
+  <text class="tiny" x="786" y="671">capability</text>
+
+  <rect class="chip" x="905" y="625" width="155" height="56"/>
+  <text class="label" x="926" y="651">Harness service</text>
+  <text class="tiny" x="926" y="671">runtime envelope</text>
+
+  <rect class="chip" x="120" y="700" width="150" height="42"/>
+  <text class="label" x="141" y="726">LLM binding</text>
+
+  <rect class="chip" x="295" y="700" width="185" height="42"/>
+  <text class="label" x="316" y="726">Conversation runtime</text>
+
+  <rect class="chip" x="505" y="700" width="125" height="42"/>
+  <text class="label" x="526" y="726">Run record</text>
+
+  <rect class="chip" x="655" y="700" width="110" height="42"/>
+  <text class="label" x="676" y="726">Trace</text>
+
+  <rect class="chip" x="790" y="700" width="135" height="42"/>
+  <text class="label" x="811" y="726">Eval result</text>
+
+  <path class="arrow" d="M240 653 H260"/>
+  <path class="arrow" d="M400 653 H420"/>
+  <path class="arrow" d="M570 653 H590"/>
+  <path class="arrow" d="M740 653 H760"/>
+  <path class="arrow" d="M880 653 H900"/>
+  <path class="arrow" d="M982 681 C982 708 280 680 270 718"/>
+  <path class="arrow" d="M270 721 H290"/>
+  <path class="arrow" d="M480 721 H500"/>
+  <path class="arrow" d="M630 721 H650"/>
+  <path class="arrow" d="M765 721 H785"/>
+
+  <!-- Data plane -->
+  <rect class="data" x="1150" y="555" width="515" height="210"/>
+  <text class="section-title" x="1175" y="594">Core Data Plane</text>
+
+  <rect class="chip" x="1180" y="625" width="210" height="92"/>
+  <text class="label" x="1202" y="651">Postgres</text>
+  <text class="small" x="1202" y="673">System of record for core state</text>
+  <text class="small" x="1202" y="693">Metadata, scope, memory, runs</text>
+  <text class="code" x="1202" y="710">pgvector first vector path</text>
+
+  <rect class="chip" x="1425" y="625" width="210" height="92"/>
+  <text class="label" x="1447" y="651">ObjectStorage</text>
+  <text class="small" x="1447" y="673">Original bytes and generated assets</text>
+  <text class="small" x="1447" y="693">Images, exports, trace attachments</text>
+  <text class="code" x="1447" y="710">GCS / S3 / R2 swappable</text>
+
+  <!-- Adapter layer -->
+  <rect class="adapter" x="90" y="820" width="875" height="235"/>
+  <text class="section-title" x="115" y="859">Ports and Replaceable Adapters</text>
+
+  <rect class="chip" x="120" y="890" width="240" height="52"/>
+  <text class="label" x="142" y="916">LanguageModelProvider</text>
+  <text class="small" x="142" y="936">OpenAI, Anthropic</text>
+
+  <rect class="chip" x="385" y="890" width="240" height="52"/>
+  <text class="label" x="407" y="916">Identity + Session</text>
+  <text class="small" x="407" y="936">Local now, Ory/SSO later</text>
+
+  <rect class="chip" x="650" y="890" width="240" height="52"/>
+  <text class="label" x="672" y="916">VectorIndex</text>
+  <text class="small" x="672" y="936">pgvector first, Qdrant later</text>
+
+  <rect class="chip" x="120" y="965" width="240" height="52"/>
+  <text class="label" x="142" y="991">RepoProvider</text>
+  <text class="small" x="142" y="1011">GitHub, GitLab</text>
+
+  <rect class="chip" x="385" y="965" width="240" height="52"/>
+  <text class="label" x="407" y="991">PolicyEngine</text>
+  <text class="small" x="407" y="1011">Local now, OpenFGA later</text>
+
+  <rect class="chip" x="650" y="965" width="240" height="52"/>
+  <text class="label" x="672" y="991">Collaboration + Storage</text>
+  <text class="small" x="672" y="1011">Yjs, local storage, object stores</text>
+
+  <!-- Deployment -->
+  <rect class="deploy" x="1010" y="820" width="655" height="235"/>
+  <text class="section-title" x="1035" y="859">Push-to-Deploy Operations</text>
+
+  <rect class="chip" x="1040" y="890" width="160" height="52"/>
+  <text class="label" x="1062" y="916">GitHub</text>
+  <text class="small" x="1062" y="936">push to main</text>
+
+  <rect class="chip" x="1230" y="890" width="185" height="52"/>
+  <text class="label" x="1252" y="916">Vercel</text>
+  <text class="small" x="1252" y="936">web deployment</text>
+
+  <rect class="chip" x="1445" y="890" width="185" height="52"/>
+  <text class="label" x="1467" y="916">Cloud Build</text>
+  <text class="small" x="1467" y="936">image + migration + rollout</text>
+
+  <rect class="chip" x="1040" y="965" width="220" height="52"/>
+  <text class="label" x="1062" y="991">Terraform</text>
+  <text class="small" x="1062" y="1011">Cloud Run, jobs, IAM, DB mode</text>
+
+  <rect class="chip" x="1290" y="965" width="170" height="52"/>
+  <text class="label" x="1312" y="991">Secret Manager</text>
+  <text class="small" x="1312" y="1011">API keys, DB URL</text>
+
+  <rect class="chip" x="1490" y="965" width="140" height="52"/>
+  <text class="label" x="1512" y="991">Cloud Run</text>
+  <text class="small" x="1512" y="1011">API revision</text>
+
+  <path class="arrow" d="M1200 916 H1225"/>
+  <path class="arrow" d="M1200 916 C1260 855 1390 855 1440 916"/>
+  <path class="arrow" d="M1415 916 H1440"/>
+  <path class="arrow" d="M1260 991 H1285"/>
+  <path class="arrow" d="M1460 991 H1485"/>
+
+  <!-- Cross-layer flows -->
+  <path class="arrow" d="M450 342 H515"/>
+  <path class="arrow" d="M940 342 H1005"/>
+  <path class="arrow" d="M1338 500 C1338 523 1338 535 1338 550"/>
+  <path class="arrow" d="M590 500 C590 530 590 535 590 550"/>
+  <path class="arrow-muted" d="M650 765 C650 795 650 805 650 815"/>
+  <path class="arrow-muted" d="M1338 765 C1338 795 1338 805 1338 815"/>
+  <path class="arrow-muted" d="M1575 942 C1650 835 1668 620 1500 500"/>
+
+  <!-- Footer notes -->
+  <line class="divider" x1="90" y1="1090" x2="1665" y2="1090"/>
+  <text class="small" x="115" y="1125">Architecture source: architecture/contract.json. Generated picture summarizes intended platform direction, not a claim that every adapter is production-complete today.</text>
+  <text class="tiny" x="115" y="1152">Key rule: app and domain code depend on schema and ports; concrete infrastructure integrations stay behind adapters and deployment configuration.</text>
+</svg>

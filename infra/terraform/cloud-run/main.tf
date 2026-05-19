@@ -330,9 +330,8 @@ resource "google_cloudbuild_trigger" "api_main_deploy" {
   location    = var.region
   filename    = "cloudbuild.yaml"
 
-  github {
-    owner = var.github_owner
-    name  = var.github_repo
+  repository_event_config {
+    repository = "projects/${var.project_id}/locations/${var.region}/connections/${var.github_connection_name}/repositories/${var.github_repository_name}"
 
     push {
       branch = var.github_deploy_branch_regex
@@ -357,4 +356,6 @@ resource "google_cloudbuild_trigger" "api_main_deploy" {
     _MIGRATION_JOB = google_cloud_run_v2_job.core_migrate.name
     _DEPLOY_REGION = var.region
   }
+
+  service_account = "projects/${var.project_id}/serviceAccounts/${var.runtime_service_account_email}"
 }

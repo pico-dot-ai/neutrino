@@ -1,25 +1,30 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - -f
-      - apps/api/Dockerfile
-      - -t
-      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
-      - .
+      - -ceu
+      - |
+        IMAGE_TAG="$${SHORT_SHA:-manual-$$(date +%Y%m%d%H%M%S)}"
+        IMAGE_REF="${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:$${IMAGE_TAG}"
+        echo "$${IMAGE_REF}" > /workspace/image_ref.txt
+        docker build -f apps/api/Dockerfile -t "$${IMAGE_REF}" .
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - push
-      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+      - -ceu
+      - |
+        IMAGE_REF="$$(cat /workspace/image_ref.txt)"
+        docker push "$${IMAGE_REF}"
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args:
       - -ceu
       - |
+        IMAGE_REF="$$(cat /workspace/image_ref.txt)"
         MIGRATION_JOB="$${_MIGRATION_JOB:-${_SERVICE_NAME}-core-migrate}"
         gcloud run jobs update "$${MIGRATION_JOB}" \
           --region "${_DEPLOY_REGION}" \
-          --image "${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}"
+          --image "$${IMAGE_REF}"
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args:
@@ -30,15 +35,14 @@ steps:
           --region "${_DEPLOY_REGION}" \
           --wait
   - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
-      - run
-      - services
-      - update
-      - ${_SERVICE_NAME}
-      - --region
-      - ${_DEPLOY_REGION}
-      - --image
-      - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}
+      - -ceu
+      - |
+        IMAGE_REF="$$(cat /workspace/image_ref.txt)"
+        gcloud run services update "${_SERVICE_NAME}" \
+          --region "${_DEPLOY_REGION}" \
+          --image "$${IMAGE_REF}"
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
     args:
@@ -66,6 +70,3 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
-images:
-  - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_IMAGE_NAME}:${SHORT_SHA}

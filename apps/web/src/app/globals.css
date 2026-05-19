@@ -26,7 +26,7 @@ body {
 .landing-shell {
   position: relative;
   min-height: 100vh;
-  padding: 128px 32px 96px;
+  padding: 0 32px 96px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,7 +289,7 @@ body {
 
 @media (max-width: 640px) {
   .landing-shell {
-    padding: 110px 24px 64px;
+    padding: 0 24px 64px;
   }
 
   .landing-content {

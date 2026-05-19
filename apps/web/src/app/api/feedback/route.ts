@@ -19,20 +19,14 @@ export async function POST(req: Request) {
   }
 
   if (!FEEDBACK_SECRET) {
-    return NextResponse.json(
-      { ok: false, error: "missing_form_secret" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "missing_form_secret" }, { status: 500 });
   }
 
   let parsed: FeedbackRequestBody;
   try {
     parsed = (await req.json()) as FeedbackRequestBody;
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "invalid_json" },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
   }
 
   const message = typeof parsed.message === "string" ? parsed.message : "";

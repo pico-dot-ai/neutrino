@@ -1,57 +1,50 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Badge, Button } from "@neutrino/ui";
+import { DotField } from "@/components/landing/dot-field";
+import { FeedbackForm } from "@/components/landing/feedback-form";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(86,127,210,0.18),transparent_48%),linear-gradient(180deg,#fbfcff,#f1f5fb)] text-foreground">
-      <section className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-16 sm:px-10 sm:py-24">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-semibold tracking-[0.28em] text-muted-foreground uppercase">
-            Neutrino Platform
-          </p>
-          <Link href="/login">
-            <Button className="rounded-full px-5">Login</Button>
-          </Link>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-end">
-          <div className="space-y-6">
-            <Badge className="rounded-full border-border bg-background/80 text-foreground">
-              Internal API-First Platform
-            </Badge>
-            <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
-              Build independent apps fast while sharing one governed Neutrino backend.
-            </h1>
-            <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-              Register OAuth apps, publish internal capabilities, and keep deployment
-              ownership in each app repo. Neutrino handles identity, policy, and
-              usage governance with <code>app_id</code> as the platform-wide key.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/login">
-                <Button className="h-11 rounded-full px-6">Go to Login</Button>
-              </Link>
-              <Link href="/admin/debug/chat">
-                <Button
-                  className="h-11 rounded-full border-border bg-background text-foreground hover:bg-secondary"
-                  variant="secondary"
-                >
-                  Debug Chat (Admin)
-                </Button>
-              </Link>
+    <main className="landing-shell">
+      <header className="landing-header" role="banner">
+        <div className="landing-header-inner">
+          <div className="landing-brand">
+            <Link
+              className="landing-brand-mark"
+              href="/"
+              aria-label="Go to pico.ai home"
+            >
+              <Image
+                src="/favicon.svg"
+                alt=""
+                className="landing-brand-mark-img"
+                width={28}
+                height={28}
+              />
+            </Link>
+            <div className="landing-brand-copy">
+              <div className="landing-brand-name">pico.ai</div>
+              <div className="landing-brand-tagline">There&apos;s an AI for everyone.</div>
             </div>
           </div>
-
-          <div className="rounded-3xl border border-border/90 bg-background/85 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.08)] sm:p-8">
-            <h2 className="text-lg font-semibold tracking-tight">What ships in v1</h2>
-            <ul className="mt-4 space-y-3 text-sm leading-7 text-muted-foreground">
-              <li>OAuth app registration and credential lifecycle</li>
-              <li>Internal capability catalog for provider apps</li>
-              <li>Admin-gated control plane with session-based login</li>
-              <li>Starter container for launching new app repos</li>
-            </ul>
-          </div>
+          <nav className="landing-nav" aria-label="Primary">
+            <Link href="/login" className="landing-nav-cta">
+              Login
+            </Link>
+          </nav>
         </div>
+      </header>
+
+      <DotField />
+
+      <section className="landing-content">
+        <Image src="/pico-logo.svg" alt="pico.ai" width={360} height={96} priority />
+        <p className="landing-tagline">There&apos;s an AI for everyone.</p>
+        <p className="landing-intro">
+          We&apos;re building something new. Share your email so we can stay in touch,
+          we&apos;d love to keep you close on the journey.
+        </p>
+        <FeedbackForm />
       </section>
     </main>
   );

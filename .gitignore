@@ -22,6 +22,7 @@ coverage
 # misc
 .DS_Store
 *.pem
+imports/
 
 # debug
 npm-debug.log*

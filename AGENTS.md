@@ -48,3 +48,9 @@
 - For web implementation review, use the Codex in-app browser (IAB) by default.
 - If IAB is unavailable or blocked, use the system default browser as the fallback.
 - Keep browser checks scoped to the target route/state and report what was verified.
+
+## Token Burn Guardrails
+- Follow `docs/token-guardrails.md` for token-budget behavior in this repo.
+- Treat significant token burn as opt-in: if a requested or planned action meets any "significant burn" trigger, pause and ask for explicit approval before running it.
+- Always explain why the action is expensive, what value it provides, and one cheaper alternative.
+- Keep default exploration narrow: targeted file reads, bounded output, and no broad dumps unless explicitly approved.

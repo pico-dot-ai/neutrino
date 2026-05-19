@@ -14,8 +14,14 @@ provider "google" {
   region  = var.region
 }
 
+locals {
+  self_managed_postgres_enabled = var.enable_self_managed_postgres
+  postgres_mode_hardened        = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "hardened"
+  postgres_mode_prototype       = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "prototype"
+}
+
 resource "google_secret_manager_secret" "postgres_app_password" {
-  count     = var.enable_self_managed_postgres ? 1 : 0
+  count     = local.self_managed_postgres_enabled ? 1 : 0
   secret_id = var.postgres_password_secret_name
 
   replication {
@@ -24,14 +30,14 @@ resource "google_secret_manager_secret" "postgres_app_password" {
 }
 
 resource "google_project_iam_member" "postgres_vm_secret_accessor" {
-  count   = var.enable_self_managed_postgres ? 1 : 0
+  count   = local.self_managed_postgres_enabled ? 1 : 0
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${var.runtime_service_account_email}"
 }
 
 resource "google_vpc_access_connector" "serverless" {
-  count         = var.enable_self_managed_postgres ? 1 : 0
+  count         = local.postgres_mode_hardened ? 1 : 0
   name          = var.serverless_vpc_connector_name
   region        = var.region
   network       = var.postgres_network
@@ -41,7 +47,7 @@ resource "google_vpc_access_connector" "serverless" {
 }
 
 resource "google_compute_disk" "postgres_data" {
-  count = var.enable_self_managed_postgres ? 1 : 0
+  count = local.self_managed_postgres_enabled ? 1 : 0
   name  = "${var.postgres_instance_name}-data"
   type  = "pd-balanced"
   zone  = var.postgres_zone
@@ -53,7 +59,7 @@ resource "google_compute_disk" "postgres_data" {
 }
 
 resource "google_compute_instance" "postgres" {
-  count        = var.enable_self_managed_postgres ? 1 : 0
+  count        = local.self_managed_postgres_enabled ? 1 : 0
   name         = var.postgres_instance_name
   machine_type = var.postgres_machine_type
   zone         = var.postgres_zone
@@ -74,6 +80,11 @@ resource "google_compute_instance" "postgres" {
 
   network_interface {
     network = var.postgres_network
+
+    dynamic "access_config" {
+      for_each = local.postgres_mode_prototype ? [1] : []
+      content {}
+    }
   }
 
   service_account {
@@ -96,7 +107,7 @@ resource "google_compute_instance" "postgres" {
 }
 
 resource "google_compute_firewall" "postgres_from_serverless" {
-  count   = var.enable_self_managed_postgres ? 1 : 0
+  count   = local.postgres_mode_hardened ? 1 : 0
   name    = "${var.postgres_instance_name}-from-serverless"
   network = var.postgres_network
 
@@ -114,15 +125,32 @@ resource "google_compute_firewall" "postgres_from_serverless" {
   ]
 }
 
+resource "google_compute_firewall" "postgres_public_ingress" {
+  count   = local.postgres_mode_prototype ? 1 : 0
+  name    = "${var.postgres_instance_name}-public-ingress"
+  network = var.postgres_network
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5432"]
+  }
+
+  source_ranges = var.postgres_public_allowed_cidrs
+
+  target_tags = [
+    "pico-postgres"
+  ]
+}
+
 resource "google_compute_router" "postgres_nat" {
-  count   = var.enable_self_managed_postgres ? 1 : 0
+  count   = local.postgres_mode_hardened ? 1 : 0
   name    = "${var.postgres_instance_name}-router"
   network = var.postgres_network
   region  = var.region
 }
 
 resource "google_compute_router_nat" "postgres_nat" {
-  count                              = var.enable_self_managed_postgres ? 1 : 0
+  count                              = local.postgres_mode_hardened ? 1 : 0
   name                               = "${var.postgres_instance_name}-nat"
   router                             = google_compute_router.postgres_nat[0].name
   region                             = google_compute_router.postgres_nat[0].region
@@ -215,7 +243,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     dynamic "vpc_access" {
-      for_each = var.enable_self_managed_postgres ? [google_vpc_access_connector.serverless[0].id] : []
+      for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
       content {
         connector = vpc_access.value
         egress    = "PRIVATE_RANGES_ONLY"
@@ -270,7 +298,7 @@ resource "google_cloud_run_v2_job" "core_migrate" {
       }
 
       dynamic "vpc_access" {
-        for_each = var.enable_self_managed_postgres ? [google_vpc_access_connector.serverless[0].id] : []
+        for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
         content {
           connector = vpc_access.value
           egress    = "PRIVATE_RANGES_ONLY"
@@ -313,6 +341,7 @@ resource "google_cloudbuild_trigger" "api_main_deploy" {
 
   included_files = [
     "apps/api/**",
+    "migrations/**",
     "packages/**",
     "package.json",
     "package-lock.json",

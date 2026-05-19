@@ -1,148 +1,416 @@
-# Deployment Baseline
+# Deployment Baseline and Runbook
 
 Operational issue history and recurring fixes are tracked in [docs/ops-known-issues.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/ops-known-issues.md).
 
-## Web
-- Deploy [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web) to Vercel.
-- Configure:
-  - `API_BASE_URL`
-  - `API_PROXY_SHARED_SECRET`
-  - `APP_SESSION_SECRET`
-  - `APP_SESSION_TTL_SECONDS`
-  - `APP_IDENTITY_USERS_JSON`
-  - `APP_AUTH_ENABLED`
-  - `NEXT_PUBLIC_APP_NAME`
-- `API_BASE_URL` must be the root Cloud Run service URL only, for example `https://neutrino-api-xxxxx-uc.a.run.app`
-- Do not set `API_BASE_URL` to:
-  - a Cloud Console URL
-  - a revision URL path
-  - a URL that already includes `/v1/chat`
+This document is both the human deployment runbook and the coding-agent operating guide. Deployment work should be possible from this repo after the operator has provided Google Cloud, GitHub, Vercel, and npm/auth access as needed.
 
-## Auth
+## Source of Truth
+
+- Web runtime: [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web), deployed to Vercel.
+- API runtime: [apps/api](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api), deployed to Cloud Run from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
+- API deploy worker: [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
+- Google Cloud infrastructure: [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run).
+- Architecture contract: [architecture/contract.json](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/architecture/contract.json).
+- Generated architecture doc: [docs/architecture-canonical.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/architecture-canonical.md).
+- Requirements and accepted constraints: [docs/requirements-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/requirements-baseline.md).
+
+Deployment-affecting architecture changes must update [architecture/contract.json](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/architecture/contract.json) first, then regenerate [docs/architecture-canonical.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/architecture-canonical.md) with:
+
+```sh
+npm run architecture:render
+```
+
+## Deployment Model
+
+- Pushes to `main` are the intended production deployment path.
+- Vercel owns the frontend deploy for [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web).
+- Cloud Build owns the API image build and Cloud Run rollout.
+- Terraform owns the Cloud Run service contract, migration job, secret bindings, resource limits, probes, ingress, IAM, and optional self-managed Postgres resources.
+- Cloud Build should roll images forward only. Do not hand-configure Cloud Run environment variable names, probes, resource limits, or IAM in the console for normal operation.
+- Secrets are intentionally outside git and must be created or rotated manually through Vercel and Google Secret Manager.
+
+## Required Access
+
+The coding agent can run the deploy process once these access requirements are satisfied:
+
+- GitHub access to push or merge to `pico-dot-ai/neutrino`.
+- Vercel access to the project connected to this repo.
+- Google Cloud auth for project `neutrino-491317` or the selected target project.
+- Terraform access to the GCS backend bucket `neutrino-terraform-state`.
+- Permission to read/write Secret Manager secrets used by the API.
+- Permission to trigger Cloud Build and update Cloud Run through the configured service account.
+
+Useful auth/setup commands:
+
+```sh
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project neutrino-491317
+gcloud auth list
+gcloud config list project
+```
+
+When running Terraform from Codex, provider-backed commands such as `terraform validate`, `terraform plan`, and `terraform apply` may require unsandboxed execution because the Google provider can use a local Unix socket for its plugin handshake.
+
+## Pre-Deploy Validation
+
+Run these before merging or triggering production deploys:
+
+```sh
+npm install
+npm run test
+npm run typecheck
+npm run lint
+npm run build
+npm run architecture:check
+npm run starter:version:check
+```
+
+API-specific checks before Cloud Build:
+
+- Confirm [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml) escapes Cloud Build shell variables as `$${...}` inside script steps.
+- Confirm [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile) copies workspace package manifests before `npm install` for every `@neutrino/*` dependency referenced by copied app manifests.
+- Confirm the API bundle does not leave runtime imports to local workspace TypeScript source packages.
+- Keep `/healthz`, `/readyz`, and `/v1/chat` available on deployable API builds.
+
+## Environment Variables and Secrets
+
+### Vercel Web
+
+Set these in Vercel for the production web deployment:
+
+- `API_BASE_URL`
+- `API_PROXY_SHARED_SECRET`
+- `APP_SESSION_SECRET`
+- `APP_SESSION_TTL_SECONDS`
+- `APP_IDENTITY_USERS_JSON`
+- `APP_AUTH_ENABLED`
+- `NEXT_PUBLIC_APP_NAME`
+
+`API_BASE_URL` must be the root Cloud Run service URL only, for example:
+
+```text
+https://neutrino-api-xxxxx-uc.a.run.app
+```
+
+Do not set `API_BASE_URL` to a Cloud Console URL, a revision URL, or a URL that already includes `/v1/chat`.
+
+Production web deployments must define `APP_IDENTITY_USERS_JSON`; the development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape:
+
+```json
+[
+  {
+    "username": "admin",
+    "password": "replace-with-a-strong-password",
+    "email": "admin@pico.ai",
+    "orgMemberships": ["picoai"],
+    "roles": ["app_admin", "org_admin"]
+  }
+]
+```
+
+`APP_SESSION_SECRET` must be a strong random string. Do not expose `OPENAI_API_KEY` to Vercel; only the Cloud Run API should have it.
+
+Vercel CLI checks:
+
+```sh
+vercel env ls
+vercel deploy --prod
+vercel ls
+```
+
+If GitHub-to-Vercel auto deploy is configured, pushing or merging to the production branch should be enough. Use the Vercel dashboard or `vercel ls` to confirm the production deployment.
+
+### Auth Direction
+
 - The product auth surface should be hosted under `auth.pico.ai`.
-- The product auth model must use a real login page, not HTTP Basic Auth.
+- The production auth model must use a real login page, not HTTP Basic Auth.
 - The first implementation may use local username/password auth for development and early internal usage.
-- Production web deployments must define `APP_IDENTITY_USERS_JSON`; the development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`.
-- `APP_IDENTITY_USERS_JSON` must be a JSON array with this shape:
-  ```json
-  [
-    {
-      "username": "admin",
-      "password": "replace-with-a-strong-password",
-      "email": "admin@pico.ai",
-      "orgMemberships": ["picoai"],
-      "roles": ["app_admin", "org_admin"]
-    }
-  ]
-  ```
-- `APP_SESSION_SECRET` must also be set to a strong random string in production.
 - Auth must stay behind provider ports and adapters so the backing implementation can move to Ory Kratos.
 - SSO is planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites.
 - Session-backed access must protect Admin Console and builder surfaces.
 
-## API
-- Preflight checks before triggering deploy:
-  - Confirm `cloudbuild.yaml` shell variables are escaped as `$${...}` when used inside script steps.
-  - Confirm pre-install workspace `package.json` copies in [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile) include all `@neutrino/*` dependencies referenced by copied app manifests.
-  - Confirm API bundle strategy does not leave runtime imports to local workspace TS source packages.
-- Build the container from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
-- When using Cloud Build, the build context must be the repository root, not `apps/api`, because the Dockerfile copies workspace files from the monorepo root.
-- The included [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml) builds, pushes, updates the existing Cloud Run service image, and then verifies `/healthz`.
-- Terraform in [infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf) is the source of truth for the Cloud Run service contract:
-  - exact env var names
-  - Secret Manager bindings
-  - resource limits
-  - probes
-  - ingress
-  - public invoker IAM
-- Terraform state for the Cloud Run module must use the shared GCS backend in [infra/terraform/cloud-run/backend.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/backend.tf):
-  - bucket: `neutrino-terraform-state`
-  - prefix: `cloud-run/prod`
-- Cloud Build is not the place to create or hand-configure runtime env vars anymore. It should only roll the image forward on an existing service.
-- Provide secrets in Secret Manager for:
-  - `OPENAI_API_KEY`
-  - `API_PROXY_SHARED_SECRET`
-  - `CORE_DATABASE_URL`
-  - `POSTGRES_APP_PASSWORD`
-- `CORE_DATABASE_URL` should be a full Postgres connection string for the target environment database.
-- Terraform now manages a Cloud Run migration job (`${service_name}-core-migrate`) and Cloud Build runs it with the just-built image before updating the API service.
-- Apply Terraform once before using the Cloud Build trigger continuously.
-- If the service already exists, import it into Terraform state first instead of recreating it.
-- Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/terraform.tfvars.example) as the starting point for variables.
-- One-time backend bootstrap and migration flow:
-  - create the GCS bucket `neutrino-terraform-state` in project `neutrino-491317`
-  - enable uniform bucket-level access, public access prevention, and versioning
-  - grant bucket object read/write access to each operator or CI identity that will run Terraform
-  - run `terraform init -migrate-state` from [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run)
-  - verify the migrated state object exists under `gs://neutrino-terraform-state/cloud-run/prod`
-  - after migration, treat the GCS backend as canonical and do not rely on local state files
-- When running Terraform from Codex, provider-backed commands such as `terraform validate`,
-  `terraform plan`, and `terraform apply` may require unsandboxed execution because the Google
-  provider uses a local Unix socket for its plugin handshake.
-- Cloud Build trigger substitutions should be plain values, not nested image strings. Use:
-  - `_AR_HOSTNAME=us-central1-docker.pkg.dev`
-  - `_AR_REPOSITORY=cloud-run-source-deploy`
-  - `_IMAGE_NAME=neutrino-api`
-  - `_SERVICE_NAME=neutrino-api`
-  - `_MIGRATION_JOB=neutrino-api-core-migrate`
-  - `_DEPLOY_REGION=us-central1`
-- Backend deployment from GitHub should use the Terraform-managed Cloud Build trigger in [infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf), enabled with `enable_github_deploy_trigger = true`.
-- The trigger watches pushes to `main` on `pico-dot-ai/neutrino` and runs [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
-- The Cloud Build GitHub App or Cloud Build repository connection must be connected to the GitHub repo once before Terraform can create or use the trigger.
-- The Cloud Build service account must be able to:
-  - build and push to Artifact Registry
-  - update the Cloud Run service
-  - act as the Cloud Run runtime service account, if a non-default runtime service account is configured
-- Import command for an existing service:
-  - `terraform import google_cloud_run_v2_service.api projects/PROJECT_ID/locations/us-central1/services/neutrino-api`
+### Google Secret Manager
+
+The API requires these Secret Manager secrets in the target GCP project:
+
+- `OPENAI_API_KEY`
+- `API_PROXY_SHARED_SECRET`
+- `POSTGRES_APP_PASSWORD`
+- `CORE_DATABASE_URL`
+
+Create secrets when missing:
+
+```sh
+gcloud secrets create OPENAI_API_KEY --replication-policy=automatic
+gcloud secrets create API_PROXY_SHARED_SECRET --replication-policy=automatic
+gcloud secrets create POSTGRES_APP_PASSWORD --replication-policy=automatic
+gcloud secrets create CORE_DATABASE_URL --replication-policy=automatic
+```
+
+Add or rotate secret values:
+
+```sh
+printf '%s' '<openai-api-key>' | gcloud secrets versions add OPENAI_API_KEY --data-file=-
+printf '%s' '<shared-proxy-secret>' | gcloud secrets versions add API_PROXY_SHARED_SECRET --data-file=-
+printf '%s' '<postgres-password>' | gcloud secrets versions add POSTGRES_APP_PASSWORD --data-file=-
+printf '%s' '<postgres-connection-url>' | gcloud secrets versions add CORE_DATABASE_URL --data-file=-
+```
+
+Terraform creates the `POSTGRES_APP_PASSWORD` secret metadata when self-managed Postgres is enabled, but the secret value must be added outside Terraform so it is not written into Terraform state.
+
+## Terraform Infrastructure
+
+[infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf) is the source of truth for:
+
+- Cloud Run service settings.
+- Cloud Run migration job `${service_name}-core-migrate`.
+- Secret Manager bindings.
+- Runtime service account.
+- CPU, memory, timeout, scaling, startup probe, ingress, and invoker IAM settings.
+- Optional self-managed Postgres VM, disk, firewall, and VPC connector resources.
+- Optional Cloud Build GitHub trigger.
+
+Terraform state for this module must use the shared GCS backend in [infra/terraform/cloud-run/backend.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/backend.tf):
+
+- bucket: `neutrino-terraform-state`
+- prefix: `cloud-run/prod`
+
+One-time backend setup:
+
+```sh
+gcloud storage buckets create gs://neutrino-terraform-state --project=neutrino-491317 --location=us-central1 --uniform-bucket-level-access --public-access-prevention
+gcloud storage buckets update gs://neutrino-terraform-state --versioning
+gcloud storage ls gs://neutrino-terraform-state
+```
+
+Initialize and apply:
+
+```sh
+cd infra/terraform/cloud-run
+terraform init
+terraform validate
+terraform plan -out=tfplan
+terraform apply tfplan
+terraform output
+```
+
+If migrating existing local state to GCS:
+
+```sh
+cd infra/terraform/cloud-run
+terraform init -migrate-state
+gcloud storage ls gs://neutrino-terraform-state/cloud-run/prod
+```
+
+If the Cloud Run service already exists and is not in Terraform state, import it before applying:
+
+```sh
+cd infra/terraform/cloud-run
+terraform import google_cloud_run_v2_service.api projects/PROJECT_ID/locations/us-central1/services/neutrino-api
+```
+
+Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/terraform.tfvars.example) as the starting point for variables.
+
+## Cloud Run API Deployment
+
+The API container is built from the repository root, not from [apps/api](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api), because the Dockerfile copies workspace files from the monorepo root.
+
+Cloud Build does this sequence:
+
+1. Build image from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
+2. Push image to Artifact Registry.
+3. Update the Cloud Run migration job to the new image.
+4. Execute the migration job and wait for completion.
+5. Update the Cloud Run service to the new image.
+6. Read the service URL.
+7. Verify `GET /healthz`.
+
+Required Cloud Build trigger substitutions:
+
+- `_AR_HOSTNAME=us-central1-docker.pkg.dev`
+- `_AR_REPOSITORY=cloud-run-source-deploy`
+- `_IMAGE_NAME=neutrino-api`
+- `_SERVICE_NAME=neutrino-api`
+- `_MIGRATION_JOB=neutrino-api-core-migrate`
+- `_DEPLOY_REGION=us-central1`
+
+The Terraform-managed trigger watches pushes to `main` on `pico-dot-ai/neutrino` when `enable_github_deploy_trigger = true`. Its file filter must include API source, shared packages, migrations, workspace manifests, TypeScript config, and [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml). The Cloud Build GitHub App or Cloud Build repository connection must be connected once before Terraform can create or use the trigger.
+
+Manual Cloud Build deploy from the current checkout:
+
+```sh
+gcloud builds submit . \
+  --config=cloudbuild.yaml \
+  --substitutions=_AR_HOSTNAME=us-central1-docker.pkg.dev,_AR_REPOSITORY=cloud-run-source-deploy,_IMAGE_NAME=neutrino-api,_SERVICE_NAME=neutrino-api,_MIGRATION_JOB=neutrino-api-core-migrate,_DEPLOY_REGION=us-central1
+```
+
+Manual trigger run:
+
+```sh
+gcloud builds triggers list --region=us-central1
+gcloud builds triggers run neutrino-api-main-deploy --region=us-central1 --branch=main
+```
+
+The Cloud Build service account must be able to build and push to Artifact Registry, update Cloud Run, execute Cloud Run jobs, read Secret Manager values through runtime bindings, and act as the Cloud Run runtime service account if a non-default runtime service account is configured.
 
 ## Data Platform
-- Hosted Postgres is part of the first serious implementation plan and is the durable system of record for platform metadata and canonical records.
-- pgvector should be installed with Postgres for the first vector/retrieval implementation.
-- pgvector is the initial vector implementation, not a permanent platform assumption.
-- Vector and retrieval access must stay behind replaceable ports so Qdrant, Pinecone, object storage indexes, or external retrieval APIs can be introduced later.
-- Database schema changes must be explicit, versioned migrations.
-- Temporary prototype profile: self-managed Postgres is acceptable while proving platform concepts, provided rollout safety controls are in place.
-- The self-managed prototype database runs on a Terraform-managed Compute Engine VM, not inside Cloud Run.
-- Cloud Run remains the stateless API runtime and reaches the database through a Serverless VPC Access connector.
-- The private Postgres VM uses Cloud NAT for outbound package/image downloads during bootstrap.
-- The Postgres VM uses:
-  - image: `pgvector/pgvector:pg17`
-  - database: `platform_prod`
-  - user: `platform_user`
-  - password secret: `POSTGRES_APP_PASSWORD`
-  - data disk: Terraform-managed persistent disk with destroy prevention
-  - private host: Terraform output `postgres_internal_ip`
-- The deployed `CORE_DATABASE_URL` shape is:
-  ```text
-  postgresql://platform_user:<POSTGRES_APP_PASSWORD>@<postgres_internal_ip>:5432/platform_prod?sslmode=disable
-  ```
-- Required controls for the self-managed prototype profile:
-  - separate staging and production databases
-  - backup automation plus at least one restore verification run
-  - migration promotion flow: staging migrate -> validate -> production backup -> production migrate
-  - documented rollback/runbook for failed or partial migrations
-- Keep runtime DB configuration fully environment-driven through `CORE_DATABASE_URL` or `DATABASE_URL` to preserve a clean path to managed Postgres later.
+
+Hosted Postgres is the durable system of record target. During the current prototype phase, the repo supports self-managed Postgres on a Terraform-managed Compute Engine VM.
+
+Current self-managed modes:
+
+- `prototype`: lower-cost development mode. VM gets a public IP and ingress firewall for `5432` using `postgres_public_allowed_cidrs`; no Serverless VPC Access connector or Cloud NAT is provisioned.
+- `hardened`: higher-cost private mode. VM stays private, Cloud Run reaches it through Serverless VPC Access, and Cloud NAT is provisioned for VM bootstrap egress.
+
+To avoid hardened-mode charges during development, keep this in Terraform variables:
+
+```hcl
+postgres_deployment_mode = "prototype"
+```
+
+The Postgres VM uses:
+
+- image: `pgvector/pgvector:pg17`
+- database: `platform_prod`
+- user: `platform_user`
+- password secret: `POSTGRES_APP_PASSWORD`
+- data disk: Terraform-managed persistent disk with destroy prevention
+- private host: Terraform output `postgres_internal_ip`
+- public host in prototype mode: Terraform output `postgres_public_ip`
+
+The deployed `CORE_DATABASE_URL` shape is:
+
+```text
+prototype: postgresql://platform_user:<POSTGRES_APP_PASSWORD>@<postgres_public_ip>:5432/platform_prod?sslmode=disable
+hardened:  postgresql://platform_user:<POSTGRES_APP_PASSWORD>@<postgres_internal_ip>:5432/platform_prod?sslmode=disable
+```
+
+Required controls before relying on this database for production data:
+
+- Separate staging and production databases.
+- Backup automation plus at least one restore verification run.
+- Migration promotion flow: staging migrate, validate, production backup, production migrate.
+- Documented rollback/runbook for failed or partial migrations.
+
+Keep runtime DB configuration fully environment-driven through `CORE_DATABASE_URL` or `DATABASE_URL`.
 
 ## Blob and Artifact Storage
-- Blob/artifact storage is required as a platform service boundary.
+
+Blob/artifact storage is part of the platform deployment boundary even though the first deploy path may use local development backing.
+
 - Postgres stores artifact metadata, references, permissions, provenance, checksums, and retention state.
 - ObjectStorage stores original bytes and generated binary assets, including small images, thumbnails, exports, eval datasets, trace attachments, generated files, and uploaded documents.
 - The first development backing can be local filesystem or local object storage, but the port should match production object storage semantics.
 - Production backing should remain swappable among S3-compatible storage, GCS, R2, or equivalent object stores.
+- When production object storage is selected, document provider setup, bucket/container names, IAM, secrets, lifecycle policy, backup/export assumptions, and verification commands in this file.
 
-## OpenAI Key Location
-- Use the standard `OPENAI_API_KEY` environment variable.
-- In Google Cloud Run, store it in Secret Manager and mount it into the service environment through Terraform with env names exactly `OPENAI_API_KEY` and `API_PROXY_SHARED_SECRET`.
-- In Vercel, do not expose the OpenAI key; only the Cloud Run backend should have it.
+## Web Deployment
 
-## Remaining Manual Google Cloud Step
-- Before the deploy pipeline can run end-to-end, create and populate these Secret Manager secrets in the target GCP project:
-  - `OPENAI_API_KEY`
-  - `API_PROXY_SHARED_SECRET`
-  - `POSTGRES_APP_PASSWORD`
-  - `CORE_DATABASE_URL`
-- `POSTGRES_APP_PASSWORD` must exist before the self-managed Postgres VM can initialize successfully.
-- Terraform creates the `POSTGRES_APP_PASSWORD` secret metadata only; add the secret value as a Secret Manager version outside Terraform so the password is not written into Terraform state.
-- `CORE_DATABASE_URL` is created after Terraform reports `postgres_internal_ip`, because that private IP is part of the connection string.
-- No further code changes are required for secret wiring after those secrets exist with current values.
+The Vercel production project must build [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web) from this monorepo. The expected build remains the workspace build for `@neutrino/web`:
+
+```sh
+npm run build --workspace @neutrino/web
+```
+
+Before promoting a web deployment:
+
+- Confirm Vercel production env vars are present.
+- Confirm `API_BASE_URL` points to the root Cloud Run service URL.
+- Confirm `API_PROXY_SHARED_SECRET` matches the Cloud Run secret value.
+- Confirm `APP_IDENTITY_USERS_JSON` contains at least one `app_admin`.
+- Confirm `APP_SESSION_SECRET` is set and strong.
+
+Production verification:
+
+- Vercel deployment is marked `Ready`.
+- `/login` renders.
+- Configured admin user can log in.
+- Authenticated admin routes load.
+- The chat path reaches Cloud Run through the Next.js API proxy.
+
+## Post-Deploy Verification
+
+After every API deploy, verify the deployed service directly:
+
+```sh
+SERVICE_URL="$(gcloud run services describe neutrino-api --region=us-central1 --format='value(status.url)')"
+curl -fsS "$SERVICE_URL/healthz"
+curl -fsS "$SERVICE_URL/readyz"
+```
+
+Verify the active revision and image:
+
+```sh
+gcloud run services describe neutrino-api --region=us-central1 --format='value(status.latestReadyRevisionName,status.latestCreatedRevisionName)'
+gcloud run revisions list --service=neutrino-api --region=us-central1 --limit=5
+```
+
+Verify the migration job:
+
+```sh
+gcloud run jobs describe neutrino-api-core-migrate --region=us-central1
+gcloud run jobs executions list --job=neutrino-api-core-migrate --region=us-central1 --limit=5
+```
+
+Verify Cloud Build:
+
+```sh
+gcloud builds list --region=us-central1 --limit=5
+gcloud builds log BUILD_ID --region=us-central1
+```
+
+Verify the protected chat endpoint with the same shared secret configured in Vercel and Secret Manager:
+
+```sh
+curl -i "$SERVICE_URL/v1/chat" \
+  -H "content-type: application/json" \
+  -H "x-api-proxy-secret: <shared-proxy-secret>" \
+  --data '{"messages":[{"role":"user","content":"health check"}]}'
+```
+
+The expected result is a successful streaming or JSON response from the API. A `401` usually means `API_PROXY_SHARED_SECRET` mismatch. A `404` from the web proxy usually means `API_BASE_URL` includes the wrong path. A Cloud Run revision failure usually means startup, env var, secret binding, or bundle/runtime dependency failure.
+
+After every web deploy, verify the user-facing path:
+
+```sh
+vercel ls
+```
+
+Then use the Codex in-app browser by default to check:
+
+- production `/login`
+- successful admin login
+- authenticated admin console route
+- chat request through the web app to the API
+
+Use the system browser only if the in-app browser is unavailable or blocked.
+
+## Manual Operations That Remain
+
+These still require explicit operator or agent action:
+
+- Google Cloud login and project selection.
+- Initial Cloud Build GitHub App or repository connection.
+- Initial GCS Terraform backend bucket creation.
+- Terraform state migration from local state to GCS, if not already complete.
+- Terraform import for pre-existing Cloud Run resources.
+- Secret creation and rotation in Google Secret Manager.
+- Vercel environment variable creation and rotation.
+- Vercel project setup or correction if GitHub auto deploy is not connected.
+- Manual Cloud Build trigger runs when not deploying by push to `main`.
+- Database backup/restore verification before treating data as production-critical.
+
+## Agent Checklist
+
+For a normal deployment change, the coding agent should:
+
+1. Identify whether the change affects architecture, infra, API runtime, web runtime, or secrets.
+2. Update [architecture/contract.json](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/architecture/contract.json) and regenerate docs only for architecture-affecting changes.
+3. Update [docs/deployment-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/deployment-baseline.md), [docs/ops-known-issues.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/ops-known-issues.md), or Terraform docs when deployment behavior changes.
+4. Run pre-deploy validation.
+5. Apply Terraform when service contract or infrastructure changes.
+6. Confirm required secrets exist and have current values.
+7. Trigger deploy through GitHub push, Cloud Build trigger, or Vercel production deploy.
+8. Run post-deploy API and web verification.
+9. Record recurring failures in [docs/ops-known-issues.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/ops-known-issues.md) with symptom, root cause, fix, prevention, and verification.

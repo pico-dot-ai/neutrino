@@ -74,7 +74,9 @@ Current notes:
 - Migration runner and status commands exist in `@neutrino/core` (`npm run migrate --workspace @neutrino/core` and `npm run migrate:status --workspace @neutrino/core`) using `CORE_DATABASE_URL` (or `DATABASE_URL`).
 - Validated on a clean local Postgres 17 instance with pgvector extension (`platform_stage` / `platform_user`), with migration `0001_core_foundation` applied and no pending migrations.
 - Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
-- Self-managed prototype Postgres now has Terraform scaffolding: Compute Engine VM, separate persistent data disk with destroy prevention, Cloud NAT for private VM outbound bootstrap, `pgvector/pgvector:pg17` container, Secret Manager password lookup, firewall rule, and Serverless VPC Access connector for Cloud Run.
+- Self-managed Postgres now has explicit Terraform mode profiles:
+  - `prototype` (lowest-cost dev): public-IP VM + CIDR-scoped ingress, no Serverless VPC connector/NAT.
+  - `hardened` (private): private VM + Serverless VPC connector + Cloud NAT + private ingress path.
 - Remaining Phase 2 closure work: apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
 
 ### Phase 2 Prototype Profile (Temporary)
@@ -113,7 +115,12 @@ Validation:
 
 Current notes:
 - Adapter refactors are active in `packages/adapters/*`.
-- Object and policy adapter directories are present in working tree and need completion verification.
+- Local adapter coverage now includes:
+  - `LocalObjectStorageAdapter` behavior tests for write/read/delete and URI handling.
+  - `LocalPolicyEngineAdapter` rule-evaluation tests for allow/deny/default-deny behavior.
+  - `PgVectorAdapter` implementation over self-hosted Postgres + pgvector with adapter tests covering upsert/query/delete behavior (executes live when `PGVECTOR_TEST_DATABASE_URL` is provided).
+  - explicit placeholder tests confirming `QdrantAdapter` still throws `Not implemented.`.
+- Remaining closure work: run and capture live pgvector validation against staging self-hosted Postgres, then either implement or explicitly defer the Qdrant adapter for this milestone.
 
 ### Phase 4: Catalog, Bindings, and Manifests
 Status: `In Progress`

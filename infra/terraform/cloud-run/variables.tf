@@ -163,6 +163,16 @@ variable "enable_self_managed_postgres" {
   default = false
 }
 
+variable "postgres_deployment_mode" {
+  type    = string
+  default = "prototype"
+
+  validation {
+    condition     = contains(["prototype", "hardened"], var.postgres_deployment_mode)
+    error_message = "postgres_deployment_mode must be either \"prototype\" or \"hardened\"."
+  }
+}
+
 variable "postgres_instance_name" {
   type    = string
   default = "pico-postgres"
@@ -226,4 +236,9 @@ variable "serverless_vpc_connector_min_instances" {
 variable "serverless_vpc_connector_max_instances" {
   type    = number
   default = 3
+}
+
+variable "postgres_public_allowed_cidrs" {
+  type    = list(string)
+  default = ["0.0.0.0/0"]
 }

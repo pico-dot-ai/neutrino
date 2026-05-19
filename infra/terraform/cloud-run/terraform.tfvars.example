@@ -17,6 +17,7 @@ artifact_registry_repository = "cloud-run-source-deploy"
 api_image_name              = "neutrino-api"
 
 enable_self_managed_postgres = true
+postgres_deployment_mode      = "prototype"
 postgres_instance_name       = "pico-postgres"
 postgres_zone                = "us-central1-a"
 postgres_machine_type        = "e2-small"
@@ -30,6 +31,7 @@ serverless_vpc_connector_name = "pico-serverless"
 serverless_vpc_connector_cidr = "10.8.0.0/28"
 serverless_vpc_connector_min_instances = 2
 serverless_vpc_connector_max_instances = 3
+postgres_public_allowed_cidrs = ["0.0.0.0/0"]
 
 # Terraform backend defaults are committed in backend.tf:
 # - bucket = "neutrino-terraform-state"

@@ -18,6 +18,14 @@ output "postgres_internal_ip" {
   value = try(google_compute_instance.postgres[0].network_interface[0].network_ip, null)
 }
 
+output "postgres_public_ip" {
+  value = try(google_compute_instance.postgres[0].network_interface[0].access_config[0].nat_ip, null)
+}
+
+output "postgres_deployment_mode" {
+  value = var.enable_self_managed_postgres ? var.postgres_deployment_mode : null
+}
+
 output "postgres_database" {
   value = var.postgres_app_database
 }

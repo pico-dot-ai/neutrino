@@ -5,5 +5,6 @@ export default defineConfig({
   format: ["esm"],
   target: "node24",
   outDir: "dist",
-  noExternal: [/^@neutrino\//]
+  noExternal: [/^@neutrino\//],
+  external: ["pg", "pg-native"]
 });

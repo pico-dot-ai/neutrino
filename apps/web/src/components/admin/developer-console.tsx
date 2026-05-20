@@ -33,6 +33,26 @@ type CapabilityRecord = {
   internalOnly: boolean;
 };
 
+type RuntimeRunRecord = {
+  run: {
+    runId: string;
+    status: string;
+    agentId: string;
+    harnessId: string;
+    conversationId: string;
+    startedAt: string;
+    completedAt?: string;
+    output?: string;
+    error?: string;
+  };
+  traces: Array<{
+    traceId: string;
+    eventType: string;
+    message: string;
+    createdAt: string;
+  }>;
+};
+
 async function requestJson<T>(url: string, init?: RequestInit) {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as
@@ -51,6 +71,7 @@ export function DeveloperConsole() {
   const [principal, setPrincipal] = React.useState<PrincipalPayload["principal"] | null>(null);
   const [oauthApps, setOauthApps] = React.useState<OAuthAppRecord[]>([]);
   const [capabilities, setCapabilities] = React.useState<CapabilityRecord[]>([]);
+  const [runtimeRuns, setRuntimeRuns] = React.useState<RuntimeRunRecord[]>([]);
   const [message, setMessage] = React.useState<string | null>(null);
   const [displayName, setDisplayName] = React.useState("Sample Internal App");
   const [appType, setAppType] = React.useState<OAuthAppRecord["appType"]>("consumer");
@@ -59,15 +80,17 @@ export function DeveloperConsole() {
   const [ownerAppId, setOwnerPicoAppId] = React.useState("");
 
   const refresh = React.useCallback(async () => {
-    const [me, appList, capabilityList] = await Promise.all([
+    const [me, appList, capabilityList, runtimeList] = await Promise.all([
       requestJson<PrincipalPayload>("/api/auth/me"),
       requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
-      requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities")
+      requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities"),
+      requestJson<{ runs: RuntimeRunRecord[] }>("/api/platform/runtime/runs")
     ]);
 
     setPrincipal(me.principal);
     setOauthApps(appList.apps);
     setCapabilities(capabilityList.capabilities);
+    setRuntimeRuns(runtimeList.runs);
 
     setOwnerPicoAppId((currentOwnerPicoAppId) =>
       currentOwnerPicoAppId || appList.apps[0]?.app_id || ""
@@ -257,6 +280,37 @@ export function DeveloperConsole() {
                   <p className="text-muted-foreground">
                     owner: {capability.ownerAppId} · lifecycle: {capability.lifecycleState} · internalOnly: {String(capability.internalOnly)}
                   </p>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
+          <h2 className="text-lg font-semibold tracking-tight">Dev Agent Runtime</h2>
+          <Separator className="my-4" />
+          <div className="space-y-3">
+            {runtimeRuns.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No runtime runs recorded yet.</p>
+            ) : (
+              runtimeRuns.slice(0, 5).map(({ run, traces }) => (
+                <article className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm" key={run.runId}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{run.runId}</p>
+                    <Badge className="rounded-full border-border bg-background/80 text-foreground">{run.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    agent: {run.agentId} · harness: {run.harnessId}
+                  </p>
+                  <p className="text-muted-foreground">
+                    traces: {traces.length} · started: {new Date(run.startedAt).toLocaleString()}
+                  </p>
+                  {run.output ? (
+                    <p className="mt-2 line-clamp-2 text-foreground">{run.output}</p>
+                  ) : null}
+                  {run.error ? (
+                    <p className="mt-2 text-destructive">{run.error}</p>
+                  ) : null}
                 </article>
               ))
             )}

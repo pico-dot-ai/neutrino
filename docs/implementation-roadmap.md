@@ -1,6 +1,6 @@
 # Neutrino Implementation Roadmap
 
-Last updated: 2026-05-18
+Last updated: 2026-05-20
 Owner: Platform engineering
 Primary status source: this file
 
@@ -31,7 +31,7 @@ Out of scope for this phase:
 | 3 | Infrastructure Ports and Adapters | In Progress | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
 | 4 | Catalog, Bindings, and Manifests | In Progress | manifests validate, resources register, bindings resolve runtime plan |
 | 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
-| 6 | Dev Agent Runtime | Planned | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
+| 6 | Dev Agent Runtime | In Progress | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
 | 7 | Service Donation and Control-Plane UI | Planned | cross-app capability donation/authorization validated and surfaced in UI |
 
 ## Detailed Phases
@@ -86,8 +86,9 @@ Current notes:
   - no hardcoded provider-specific host/user naming in application code
 - Prototype deployment target:
   - Postgres runs on a Terraform-managed Compute Engine VM, not Cloud Run.
-  - Cloud Run connects over a Serverless VPC Access connector.
-  - `CORE_DATABASE_URL` uses the VM private IP from Terraform output `postgres_internal_ip`.
+  - In `prototype` mode, Cloud Run connects to the VM public IP through the CIDR-scoped firewall; no Serverless VPC Access connector or Cloud NAT is provisioned.
+  - In `hardened` mode, Cloud Run connects over Serverless VPC Access and `CORE_DATABASE_URL` uses the VM private IP from Terraform output `postgres_internal_ip`.
+  - `CORE_DATABASE_URL` uses `postgres_public_ip` in prototype mode and `postgres_internal_ip` in hardened mode.
 - Minimum required controls before calling Phase 2 complete:
   - separate staging and production databases
   - automated backup policy and at least one verified restore drill
@@ -137,6 +138,7 @@ Validation:
 
 Current notes:
 - In-memory catalog adapters are renamed in working tree; final behavior validation remains open.
+- The first service-donation vertical is the Dev Agent path: Dev Agent app manifest -> service/capability -> local bindings -> runtime resolution.
 
 ### Phase 5: Auth and Data Platform
 Status: `In Progress`
@@ -157,7 +159,7 @@ Current notes:
 - Login/session/admin surfaces exist; continue hardening and coverage.
 
 ### Phase 6: Dev Agent Runtime
-Status: `Planned`
+Status: `In Progress`
 
 Target outcomes:
 - Own runtime (no Vercel AI SDK).
@@ -167,6 +169,10 @@ Target outcomes:
 
 Validation:
 - Admin/debug route executes full path and persists run/trace/usage/memory/eval outputs.
+
+Current notes:
+- The first implementation slice should route the existing debug chat through the Dev Agent runtime instead of introducing a separate Agent Builder surface.
+- The runtime proof should preserve the current chat stream contract while adding run, trace, and usage persistence behind core repository ports.
 
 ### Phase 7: Service Donation and Control-Plane UI
 Status: `Planned`
@@ -188,11 +194,12 @@ Validation:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Finalize Phase 1 closure checklist and commit the package-structure migration as an atomic baseline.
-2. Complete Phase 2 repository + migration harness validation on a clean Postgres instance.
-3. Close Phase 3 adapter test gaps for object storage, policy engine, and vector/index behavior.
-4. Implement a minimum Phase 4 binding resolution test that drives a Dev-agent manifest through catalog registration and runtime resolution.
-5. Convert current auth and memory/artifact work into explicit Phase 5 acceptance tests.
+1. Implement a Phase 4 binding resolution test that drives the Dev Agent manifest through service registration and local binding resolution.
+2. Route `/v1/chat` through the Dev Agent runtime so chat requests persist run, trace, and usage records while preserving the web SSE contract.
+3. Add an authorized admin/control-plane read path for recent Dev Agent run, trace, and usage records.
+4. Surface enough runtime lifecycle state in the admin/debug UI to verify request -> run -> trace -> usage.
+5. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
+6. Re-run local validation gates and update this roadmap when Phase 4 or Phase 6 exit criteria are satisfied.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

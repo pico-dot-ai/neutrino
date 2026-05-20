@@ -3,6 +3,17 @@ import { Readable } from "node:stream";
 import { z } from "zod";
 import type { LanguageModelProvider } from "@neutrino/ports";
 import type { ChatMessage } from "@neutrino/schema";
+import {
+  createInMemoryCoreRepositories,
+  DevAgentRuntime,
+  devAgentAppManifest,
+  devAgentHarnessManifest,
+  devAgentLocalBindingManifest,
+  devAgentManifest,
+  devAgentServiceManifest,
+  devAgentSkillManifest,
+  validatePlatformManifest
+} from "@neutrino/core";
 import { createPlatformControlPlane } from "@neutrino/platform-gateway";
 import type { ApiEnv } from "./env";
 
@@ -91,11 +102,46 @@ function isAuthorized(request: Request, env: ApiEnv) {
   return request.headers.get("x-api-proxy-secret") === env.API_PROXY_SHARED_SECRET;
 }
 
+const devAgentScope = {
+  tenantId: "tenant_picoai",
+  projectId: "project_dev_agent"
+};
+
+function randomId(prefix: string) {
+  return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
 export function createAppHandler(options: {
   aiProvider: LanguageModelProvider;
   env: ApiEnv;
 }) {
   const controlPlane = createPlatformControlPlane();
+  const core = createInMemoryCoreRepositories();
+  const runtime = new DevAgentRuntime({
+    languageModelProvider: options.aiProvider,
+    runRepository: core.runRepository,
+    traceRepository: core.traceRepository,
+    usageLedger: core.usageLedger
+  });
+  let devAgentBootstrapPromise: Promise<void> | null = null;
+
+  function ensureDevAgentBootstrap() {
+    devAgentBootstrapPromise ??= (async () => {
+      [
+        devAgentAppManifest,
+        devAgentServiceManifest,
+        devAgentSkillManifest,
+        devAgentHarnessManifest,
+        devAgentManifest,
+        devAgentLocalBindingManifest
+      ].forEach(validatePlatformManifest);
+
+      await core.serviceCatalog.registerService(devAgentServiceManifest);
+      await core.bindingResolver.registerBinding(devAgentScope, devAgentLocalBindingManifest);
+    })();
+
+    return devAgentBootstrapPromise;
+  }
 
   return async function handleRequest(request: Request): Promise<Response> {
     try {
@@ -115,41 +161,30 @@ export function createAppHandler(options: {
         }
 
         const payload = chatRequestSchema.parse(await request.json());
+        await ensureDevAgentBootstrap();
+        const languageModelBinding = await core.bindingResolver.resolveBinding({
+          scope: devAgentScope,
+          environment: devAgentLocalBindingManifest.environment,
+          requirement: "languageModel"
+        });
 
-        let finalText = "";
-        const events: Array<
-          | {
-              type: "delta";
-              text: string;
+        if (!languageModelBinding) {
+          return sse([
+            {
+              type: "error",
+              message: "Missing Dev Agent language model binding."
             }
-          | {
-              type: "done";
-              text: string;
-            }
-          | {
-              type: "error";
-              message: string;
-            }
-        > = [];
-
-        for await (const event of options.aiProvider.stream({
-          model: options.env.OPENAI_MODEL,
-          messages: payload.messages as ChatMessage[]
-        })) {
-          if (event.type === "delta") {
-            finalText += event.text;
-            events.push(event);
-          } else if (event.type === "done") {
-            finalText = event.text;
-            events.push(event);
-          }
+          ]);
         }
 
-        if (!finalText) {
-          events.push({
-            type: "done",
-            text: finalText
-          });
+        const events = [];
+        for await (const event of runtime.stream({
+          scope: devAgentScope,
+          conversationId: randomId("conversation"),
+          model: options.env.OPENAI_MODEL || languageModelBinding.model || "gpt-5.2",
+          messages: payload.messages as ChatMessage[]
+        })) {
+          events.push(event);
         }
 
         return sse(events);
@@ -259,6 +294,24 @@ export function createAppHandler(options: {
 
         if (request.method === "GET" && pathname === "/v1/control-plane/usage") {
           return json(200, { usage: controlPlane.usageLedger.list() });
+        }
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/runtime/runs") {
+          await ensureDevAgentBootstrap();
+          const runs = await core.runRepository.listRuns(devAgentScope);
+          const usage = await core.usageLedger.listUsage(devAgentScope);
+          const runsWithTraces = await Promise.all(
+            runs.map(async (run) => ({
+              run,
+              traces: await core.traceRepository.listTraces(run.runId)
+            }))
+          );
+
+          return json(200, {
+            scope: devAgentScope,
+            runs: runsWithTraces,
+            usage
+          });
         }
       }
 

@@ -130,7 +130,7 @@ Build picoAI as a composable AI service platform: a system for defining, running
 - Do not implement Agent Builder, Harness Builder, or Service Builder as isolated systems with private resource structures.
 
 ## Open Questions for the Implementation Plan
-1. What is the exact first demo app/service domain used to prove service donation?
+1. Resolved: the first demo app/service domain used to prove service donation is the Dev Agent vertical.
 2. Which minimal manifest schemas are required for the first vertical path, and which fields are intentionally deferred?
 3. Which local object-store adapter should be used for development before selecting production S3/GCS/R2 backing?
 4. What minimal eval should gate the first vertical path?

@@ -1,5 +1,5 @@
 import type { LanguageModelProvider, RunRepository, TraceRepository, UsageLedger } from "@neutrino/ports";
-import type { ChatMessage, RunRecord, ScopeRef, TraceRecord, UsageRecord } from "@neutrino/schema";
+import type { ChatMessage, RunRecord, ScopeRef, StreamEvent, TraceRecord, UsageRecord } from "@neutrino/schema";
 import { devAgentHarnessManifest, devAgentManifest, devAgentAppManifest } from "../dev-agent/manifests";
 
 export type DevAgentRuntimeRequest = {
@@ -97,6 +97,89 @@ export class DevAgentRuntime {
       return {
         run: failed,
         traces: await this.options.traceRepository.listTraces(runId)
+      };
+    }
+  }
+
+  async *stream(request: DevAgentRuntimeRequest): AsyncIterable<StreamEvent> {
+    const runId = randomId("run");
+    const startedAt = nowIso();
+    const baseRun: RunRecord = {
+      runId,
+      scope: request.scope,
+      appId: devAgentAppManifest.id,
+      agentId: devAgentManifest.id,
+      harnessId: devAgentHarnessManifest.id,
+      conversationId: request.conversationId,
+      status: "running",
+      startedAt
+    };
+
+    await this.options.runRepository.createRun(baseRun);
+    await this.trace(runId, "runtime.started", "Dev agent runtime started.", {
+      appId: baseRun.appId,
+      agentId: baseRun.agentId,
+      harnessId: baseRun.harnessId
+    });
+
+    let finalText = "";
+    let sawDone = false;
+
+    try {
+      for await (const event of this.options.languageModelProvider.stream({
+        model: request.model,
+        messages: request.messages
+      })) {
+        if (event.type === "delta") {
+          finalText += event.text;
+          yield event;
+        } else if (event.type === "done") {
+          finalText = event.text;
+          sawDone = true;
+          yield event;
+        } else {
+          yield event;
+        }
+      }
+
+      await this.trace(runId, "language_model.completed", "Language model generation completed.", {
+        model: request.model
+      });
+
+      const completed: RunRecord = {
+        ...baseRun,
+        status: "succeeded",
+        output: finalText,
+        completedAt: nowIso()
+      };
+      await this.options.runRepository.updateRun(completed);
+      await this.options.usageLedger.recordUsage({
+        usageId: randomId("usage"),
+        scope: request.scope,
+        runId,
+        provider: "language-model",
+        model: request.model,
+        createdAt: nowIso()
+      });
+
+      if (!sawDone) {
+        yield {
+          type: "done",
+          text: finalText
+        };
+      }
+    } catch (error) {
+      const failed: RunRecord = {
+        ...baseRun,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown runtime error.",
+        completedAt: nowIso()
+      };
+      await this.options.runRepository.updateRun(failed);
+      await this.trace(runId, "runtime.failed", failed.error ?? "Runtime failed.");
+      yield {
+        type: "error",
+        message: failed.error ?? "Runtime failed."
       };
     }
   }

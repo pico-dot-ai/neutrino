@@ -85,6 +85,7 @@ export function LoginForm(props: {
   const router = useRouter();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [rememberDevice, setRememberDevice] = React.useState(true);
   const [method, setMethod] = React.useState<AuthMethod>("password");
   const [step, setStep] = React.useState<AuthStep>("start");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
@@ -159,8 +160,8 @@ export function LoginForm(props: {
 
   return (
     <div className="mx-auto w-full max-w-lg overflow-hidden rounded-[1.25rem] border border-white/70 bg-white/48 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
-      <section className="min-h-[340px] px-4 py-6 sm:px-4 sm:py-7 lg:px-5">
-        <div className="mx-auto flex h-full max-w-[292px] flex-col justify-center">
+      <section className="min-h-[340px] px-3 py-6 sm:px-3 sm:py-7 lg:px-4">
+        <div className="mx-auto flex h-full max-w-[352px] flex-col justify-center">
           {step === "start" ? (
             <div className="text-center">
               <div className="mx-auto h-20 w-20 rounded-full bg-white p-[8px] shadow-[0_8px_24px_rgba(15,23,42,0.1)]">
@@ -172,21 +173,76 @@ export function LoginForm(props: {
                 Welcome to picoAI
               </h1>
 
-              <div className="mt-7 space-y-2.5">
-                <button
-                  className="relative flex h-10 w-full items-center rounded-full bg-[#191c1f] px-4 text-sm font-medium leading-none text-white shadow-[0_8px_20px_rgba(15,23,42,0.14)] transition hover:bg-[#2a2d30]"
-                  onClick={selectPassword}
-                  type="button"
-                >
-                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <span className="grid grid-cols-[20px_auto] items-center gap-3">
-                      <span className="grid h-5 w-5 place-items-center">
-                        <Image className="invert" src="/favicon.svg" alt="" width={20} height={20} />
-                      </span>
-                      <span className="inline-flex h-5 items-center leading-5">Continue with picoAI</span>
+              <form className="mt-3 space-y-3 text-left" onSubmit={handleSubmit}>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-sm font-medium text-foreground" htmlFor="start-username">
+                      Email
+                    </label>
+                    <span aria-hidden="true" className="text-sm font-medium opacity-0">
+                      Forgot password?
                     </span>
-                  </span>
-                </button>
+                  </div>
+                  <Input
+                    aria-label="Email address"
+                    autoComplete="username"
+                    className="h-10 rounded-xl bg-white text-sm shadow-sm"
+                    id="start-username"
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    type="email"
+                    value={username}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-sm font-medium text-foreground" htmlFor="start-password">
+                      Password
+                    </label>
+                    <button className="text-sm font-medium text-muted-foreground transition hover:text-foreground" type="button">
+                      Forgot password?
+                    </button>
+                  </div>
+                  <Input
+                    aria-label="Password"
+                    autoComplete="current-password"
+                    className="h-10 rounded-xl bg-white text-sm shadow-sm"
+                    id="start-password"
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    type="password"
+                    value={password}
+                  />
+                </div>
+                <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    checked={rememberDevice}
+                    className="h-4 w-4 rounded border-border text-foreground focus:ring-0"
+                    onChange={(event) => setRememberDevice(event.target.checked)}
+                    type="checkbox"
+                  />
+                  Remember me on this device
+                </label>
+
+                {error ? (
+                  <p className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    {error}
+                  </p>
+                ) : null}
+
+                <Button className="h-10 w-full rounded-xl text-sm shadow-sm" disabled={isSubmitting} type="submit">
+                  {isSubmitting ? "Signing in..." : "Sign in"}
+                </Button>
+              </form>
+
+              <div className="my-4 flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="h-px flex-1 bg-border" />
+                <span>or continue with</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              <div className="space-y-2.5">
                 {authMethods.map((option) => (
                   <button
                     className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"

@@ -126,6 +126,15 @@ export class InMemoryRunRepository implements RunRepository {
   async getRun(runId: string): Promise<RunRecord | null> {
     return this.runs.get(runId) ?? null;
   }
+
+  async listRuns(scope?: ScopeRef): Promise<RunRecord[]> {
+    const runs = Array.from(this.runs.values());
+    const scopedRuns = scope
+      ? runs.filter((record) => sameScope(record.scope, scope))
+      : runs;
+
+    return scopedRuns.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  }
 }
 
 export class InMemoryTraceRepository implements TraceRepository {

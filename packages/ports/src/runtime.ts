@@ -40,6 +40,7 @@ export interface RunRepository {
   createRun(record: RunRecord): Promise<RunRecord>;
   updateRun(record: RunRecord): Promise<RunRecord>;
   getRun(runId: string): Promise<RunRecord | null>;
+  listRuns(scope?: ScopeRef): Promise<RunRecord[]>;
 }
 
 export interface TraceRepository {

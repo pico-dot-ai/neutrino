@@ -21,6 +21,10 @@ export type StreamEvent =
   | {
       type: "done";
       text: string;
+    }
+  | {
+      type: "error";
+      message: string;
     };
 
 export type EmbedRequest = {

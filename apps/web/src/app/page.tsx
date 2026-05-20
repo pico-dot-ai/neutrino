@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FrostedHeader } from "@/components/design/frosted-header";
-import { DotField } from "@/components/landing/dot-field";
 import { FeedbackForm } from "@/components/landing/feedback-form";
 import styles from "./page.module.css";
 
@@ -33,8 +32,6 @@ export default function HomePage() {
           Build Now
         </Link>
       </FrostedHeader>
-
-      <DotField className={styles.dotField} />
 
       <section className={styles.content}>
         <Image src="/pico-logo.svg" alt="pico.ai" width={360} height={96} priority />

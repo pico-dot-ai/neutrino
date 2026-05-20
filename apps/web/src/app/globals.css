@@ -1,3 +1,31 @@
 @import "@neutrino/ui/styles.css";
 @source "../**/*.{ts,tsx}";
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
+
+body {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.85), transparent 60%),
+    #f7f8fa;
+}
+
+.persistent-dot-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.persistent-dot-field canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.app-route-layer {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}

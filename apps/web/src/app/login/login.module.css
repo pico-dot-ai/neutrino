@@ -1,0 +1,157 @@
+.shell {
+  min-height: 100vh;
+  padding: 112px 24px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--foreground);
+}
+
+.header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 20;
+  -webkit-backdrop-filter: saturate(130%) blur(6px);
+  backdrop-filter: saturate(130%) blur(6px);
+  background: linear-gradient(
+    to top,
+    rgba(247, 247, 249, 0.08) 0%,
+    rgba(247, 247, 249, 0.3) 48%,
+    rgba(247, 247, 249, 0.58) 72%,
+    rgba(247, 247, 249, 0.88) 100%
+  );
+  padding-top: env(safe-area-inset-top, 0);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.headerInner {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 260px;
+}
+
+.brandMark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.brandLogo {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.brandCopy {
+  min-width: 0;
+}
+
+.brandTitle {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.brandSubtitle {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.65);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.navCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+  color: rgba(15, 23, 42, 0.95);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.navCta:hover {
+  background: radial-gradient(
+    240% 180% at 50% 42%,
+    #689ff0 0%,
+    #5f95e3 48%,
+    #568cd8 70%,
+    #5085d0 84%,
+    #4d82cb 100%
+  );
+  border-color: #5288d3;
+  color: #ffffff;
+}
+
+@media (max-width: 1024px) {
+  .shell {
+    align-items: flex-start;
+    padding-top: 96px;
+    padding-bottom: 28px;
+  }
+
+  .brand {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 82px 16px 16px;
+  }
+
+  .header {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .headerInner {
+    padding: 10px 0;
+    gap: 10px;
+  }
+
+  .brand {
+    gap: 6px;
+  }
+
+  .brandMark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brandLogo {
+    width: 22px;
+    height: 22px;
+  }
+
+  .nav {
+    gap: 10px;
+  }
+}

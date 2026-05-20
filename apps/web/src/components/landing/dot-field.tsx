@@ -51,11 +51,13 @@ export function DotField({ className }: { className?: string }) {
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
+      const width = Math.max(rect.width, window.innerWidth);
+      const height = Math.max(rect.height, window.innerHeight);
       const ratio = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-      canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+      canvas.width = Math.max(1, Math.floor(width * ratio));
+      canvas.height = Math.max(1, Math.floor(height * ratio));
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      particles = createParticles(rect.width, rect.height);
+      particles = createParticles(width, height);
     };
 
     const render = () => {

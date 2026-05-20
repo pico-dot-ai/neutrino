@@ -1,8 +1,82 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  KeyRound,
+  Mail,
+  ShieldCheck
+} from "lucide-react";
 import { Button, Input } from "@neutrino/ui";
+
+type AuthMethod = "password" | "google" | "apple" | "github" | "sso";
+type AuthStep = "start" | "email" | "password" | "provider";
+
+const authMethods: Array<{
+  id: Exclude<AuthMethod, "password">;
+  label: string;
+  icon: React.ReactNode;
+  iconContainerClassName?: string;
+}> = [
+  {
+    id: "google",
+    label: "Continue with Google",
+    icon: <Image src="/brand/google-g-logo.png" alt="" width={20} height={20} />
+  },
+  {
+    id: "apple",
+    label: "Continue with Apple",
+    icon: <Image src="/brand/apple-logo-siwa-black-cropped.svg" alt="" width={24} height={24} />,
+    iconContainerClassName: "h-10 w-6"
+  },
+  {
+    id: "github",
+    label: "Continue with GitHub",
+    icon: <Image src="/brand/github-invertocat-black.svg" alt="" width={20} height={20} />
+  },
+  {
+    id: "sso",
+    label: "Continue with SSO",
+    icon: <Building2 aria-hidden="true" className="h-4 w-4" />
+  }
+];
+
+const methodCopy: Record<AuthMethod, {
+  title: string;
+  description: string;
+  feature: string;
+}> = {
+  password: {
+    title: "Protected developer access",
+    description: "Use your picoAI admin identity to reach the console.",
+    feature: "Local credentials remain available for the current MVP bootstrap."
+  },
+  google: {
+    title: "Workspace sign-in",
+    description: "Connect identity providers without changing the surrounding page.",
+    feature: "Provider-specific guidance can appear here while the left pane advances."
+  },
+  apple: {
+    title: "Apple identity",
+    description: "Use Apple sign-in for passwordless account access where enabled.",
+    feature: "Identity flow details can be shown here while the login pane advances."
+  },
+  github: {
+    title: "Builder-friendly access",
+    description: "GitHub auth can carry repository context into future developer flows.",
+    feature: "The right pane can stay independent or track the selected auth method."
+  },
+  sso: {
+    title: "Organization controls",
+    description: "SSO steps can collect workspace or domain hints before redirecting.",
+    feature: "Eligibility and policy checks stay visible without rebuilding the layout."
+  }
+};
 
 export function LoginForm(props: {
   nextPath?: string;
@@ -11,8 +85,35 @@ export function LoginForm(props: {
   const router = useRouter();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [method, setMethod] = React.useState<AuthMethod>("password");
+  const [step, setStep] = React.useState<AuthStep>("start");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const activeCopy = methodCopy[method];
+
+  function selectPassword() {
+    setError(null);
+    setMethod("password");
+    setStep("email");
+  }
+
+  function continueWithPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setStep("password");
+  }
+
+  function selectProvider(nextMethod: Exclude<AuthMethod, "password">) {
+    setError(null);
+    setMethod(nextMethod);
+    setStep("provider");
+  }
+
+  function resetChoice() {
+    setError(null);
+    setStep("start");
+    setMethod("password");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,42 +158,201 @@ export function LoginForm(props: {
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="username">
-          Username
-        </label>
-        <Input
-          autoComplete="username"
-          id="username"
-          onChange={(event) => setUsername(event.target.value)}
-          required
-          value={username}
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="password">
-          Password
-        </label>
-        <Input
-          autoComplete="current-password"
-          id="password"
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          type="password"
-          value={password}
-        />
-      </div>
+    <div className="mx-auto w-full max-w-lg overflow-hidden rounded-[1.25rem] border border-white/70 bg-white/48 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
+      <section className="min-h-[340px] px-4 py-6 sm:px-4 sm:py-7 lg:px-5">
+        <div className="mx-auto flex h-full max-w-[292px] flex-col justify-center">
+          {step === "start" ? (
+            <div className="text-center">
+              <div className="mx-auto h-20 w-20 rounded-full bg-white p-[8px] shadow-[0_8px_24px_rgba(15,23,42,0.1)]">
+                <div className="relative h-full w-full">
+                  <Image src="/favicon.svg" alt="" fill priority className="object-contain" />
+                </div>
+              </div>
+              <h1 className="mt-5 text-2xl font-normal tracking-tight text-foreground sm:text-3xl">
+                Welcome to picoAI
+              </h1>
 
-      {error ? (
-        <p className="rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+              <div className="mt-7 space-y-2.5">
+                <button
+                  className="relative flex h-10 w-full items-center rounded-full bg-[#191c1f] px-4 text-sm font-medium leading-none text-white shadow-[0_8px_20px_rgba(15,23,42,0.14)] transition hover:bg-[#2a2d30]"
+                  onClick={selectPassword}
+                  type="button"
+                >
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span className="grid grid-cols-[20px_auto] items-center gap-3">
+                      <span className="grid h-5 w-5 place-items-center">
+                        <Image className="invert" src="/favicon.svg" alt="" width={20} height={20} />
+                      </span>
+                      <span className="inline-flex h-5 items-center leading-5">Continue with picoAI</span>
+                    </span>
+                  </span>
+                </button>
+                {authMethods.map((option) => (
+                  <button
+                    className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
+                    key={option.id}
+                    onClick={() => selectProvider(option.id)}
+                    type="button"
+                  >
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      {option.icon ? (
+                        <span className="grid grid-cols-[20px_auto] items-center gap-3">
+                          <span className={`grid w-5 place-items-center ${option.iconContainerClassName ?? "h-5"}`}>
+                            {option.icon}
+                          </span>
+                          <span className="inline-flex h-5 items-center leading-5">{option.label}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex h-5 items-center leading-5">{option.label}</span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
 
-      <Button className="w-full" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "Signing in..." : "Sign in"}
-      </Button>
-    </form>
+              <p className="mt-7 text-center text-sm text-muted-foreground">
+                New to picoAI?{" "}
+                <Link className="font-medium text-foreground underline underline-offset-4" href="/">
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          ) : null}
+
+          {step === "email" ? (
+            <>
+              <button
+                className="mb-7 inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                onClick={resetChoice}
+                type="button"
+              >
+                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                Back
+              </button>
+              <div className="text-center">
+                <Image className="mx-auto" src="/favicon.svg" alt="" width={54} height={54} priority />
+                <h1 className="mt-5 text-2xl font-normal tracking-tight text-foreground">
+                  Enter your email
+                </h1>
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                  Use the address connected to your picoAI admin account.
+                </p>
+              </div>
+
+              <form className="mt-7 space-y-2.5" onSubmit={continueWithPassword}>
+                <div className="relative">
+                  <Mail aria-hidden="true" className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    aria-label="Email address"
+                    autoComplete="username"
+                    className="h-10 rounded-full bg-white pl-11 text-sm shadow-sm"
+                    id="username"
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="you@example.com"
+                    required
+                    value={username}
+                  />
+                </div>
+
+                <Button className="h-10 w-full rounded-full text-sm shadow-sm" type="submit">
+                  Continue
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              </form>
+            </>
+          ) : null}
+
+          {step === "password" ? (
+            <>
+              <button
+                className="mb-7 inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                onClick={selectPassword}
+                type="button"
+              >
+                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                Back
+              </button>
+              <div className="text-center">
+                <Image className="mx-auto" src="/favicon.svg" alt="" width={54} height={54} priority />
+                <h1 className="mt-5 text-2xl font-normal tracking-tight text-foreground">
+                  Enter your password
+                </h1>
+              </div>
+              <p className="mt-4 text-center text-sm leading-6 text-muted-foreground">
+                Continue as <span className="font-medium text-foreground">{username}</span>.
+              </p>
+
+              <form className="mt-7 space-y-2.5" onSubmit={handleSubmit}>
+                <div className="relative">
+                  <KeyRound aria-hidden="true" className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    aria-label="Password"
+                    autoComplete="current-password"
+                    className="h-10 rounded-full bg-white pl-11 text-sm shadow-sm"
+                    id="password"
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    type="password"
+                    value={password}
+                  />
+                </div>
+
+                {error ? (
+                  <p className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    {error}
+                  </p>
+                ) : null}
+
+                <Button className="h-10 w-full rounded-full text-sm shadow-sm" disabled={isSubmitting} type="submit">
+                  {isSubmitting ? "Signing in..." : "Sign in"}
+                </Button>
+              </form>
+            </>
+          ) : null}
+
+          {step === "provider" ? (
+            <>
+              <button
+                className="mb-7 inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                onClick={resetChoice}
+                type="button"
+              >
+                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                Back
+              </button>
+              <div className="text-center">
+                <Image className="mx-auto" src="/favicon.svg" alt="" width={54} height={54} priority />
+                <h1 className="mt-5 text-2xl font-normal tracking-tight text-foreground">
+                  {activeCopy.title}
+                </h1>
+              </div>
+              <p className="mt-4 text-center text-sm leading-6 text-muted-foreground">
+                {activeCopy.description}
+              </p>
+              <div className="mt-7 rounded-3xl border border-border bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 text-accent" />
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Provider flow placeholder</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      This pane is ready for a redirect, domain capture, or MFA step once the backend provider is wired.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {step !== "start" ? (
+            <p className="mt-10 text-center text-sm text-muted-foreground">
+              Need the public overview first?{" "}
+              <Link className="font-medium text-foreground underline-offset-4 hover:underline" href="/">
+                Back to landing page
+              </Link>
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }

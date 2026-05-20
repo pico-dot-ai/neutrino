@@ -11,12 +11,11 @@ export default function HomePage() {
       <FrostedHeader
         brand={{
           href: "/",
-          ariaLabel: "Go to pico.ai home",
+          ariaLabel: "Go to picoAI home",
           logoSrc: "/favicon.svg",
           logoWidth: 28,
           logoHeight: 28,
-          title: "pico.ai",
-          subtitle: "There's an AI for everyone"
+          title: "picoAI"
         }}
         classNames={{
           header: styles.header,
@@ -31,7 +30,7 @@ export default function HomePage() {
         }}
       >
         <Link href="/login" className={styles.navCta}>
-          Login
+          Build Now
         </Link>
       </FrostedHeader>
 
@@ -39,7 +38,7 @@ export default function HomePage() {
 
       <section className={styles.content}>
         <Image src="/pico-logo.svg" alt="pico.ai" width={360} height={96} priority />
-        <p className={styles.tagline}>There&apos;s an AI for everyone.</p>
+        <p className={styles.tagline}>There&apos;s an AI for everyone</p>
         <p className={styles.intro}>
           We&apos;re building something new. Share your email so we can stay in touch,
           we&apos;d love to keep you close on the journey.

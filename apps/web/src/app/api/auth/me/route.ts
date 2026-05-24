@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
-    principal: adminResult.session.principal,
+    actor: adminResult.session.actor,
     issuedAt: adminResult.session.issuedAt,
     expiresAt: adminResult.session.expiresAt
   });

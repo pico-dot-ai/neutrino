@@ -1,5 +1,5 @@
 import { getAuthPolicyEnv } from "@/lib/config";
-import { isEligibleAdminPrincipal } from "./policy";
+import { isEligibleAdminActor } from "./policy";
 import { parseSessionCookie, readAdminSession } from "./session";
 
 export async function getAdminSessionFromCookieHeader(cookieHeader: string | null) {
@@ -11,12 +11,11 @@ export async function getAdminSessionFromCookieHeader(cookieHeader: string | nul
       sessionId: "auth-disabled",
       issuedAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
-      principal: {
-        subject: "local:auth-disabled",
+      actor: {
+        actorId: "local:auth-disabled",
         username: "auth-disabled",
         email: "admin@pico.ai",
-        orgMemberships: ["picoai"],
-        roles: ["app_admin", "org_admin"]
+        groups: ["picoai", "app_admin", "org_admin"]
       }
     };
   }
@@ -40,7 +39,7 @@ export async function requireAdminSession(cookieHeader: string | null) {
     };
   }
 
-  if (!isEligibleAdminPrincipal(session.principal)) {
+  if (!isEligibleAdminActor(session.actor)) {
     return {
       ok: false as const,
       status: 403,

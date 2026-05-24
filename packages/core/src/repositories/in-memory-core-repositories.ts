@@ -1,6 +1,9 @@
 import type {
+  AccessGraphRepository,
   ArtifactRepository,
   BindingResolver,
+  GrantListFilter,
+  ManifestRegistry,
   MemoryRepository,
   RunRepository,
   ServiceCatalog,
@@ -8,9 +11,16 @@ import type {
   UsageLedger
 } from "@neutrino/ports";
 import type {
+  ActorRecord,
   ArtifactRecord,
   BindingRecord,
+  GrantRecord,
+  GroupRecord,
+  IdentityRecord,
+  ManifestLifecycleState,
+  ManifestRecord,
   MemoryRecord,
+  PlatformManifest,
   PicoBindingManifest,
   PicoServiceManifest,
   RunRecord,
@@ -25,11 +35,64 @@ function nowIso() {
 }
 
 function sameScope(left: ScopeRef, right: ScopeRef) {
-  return left.tenantId === right.tenantId &&
+  return left.workspaceId === right.workspaceId &&
     left.projectId === right.projectId &&
     left.orgId === right.orgId &&
-    left.teamId === right.teamId &&
+    left.groupId === right.groupId &&
     left.appInstallationId === right.appInstallationId;
+}
+
+export class InMemoryAccessGraphRepository implements AccessGraphRepository {
+  private readonly actors = new Map<string, ActorRecord>();
+  private readonly groups = new Map<string, GroupRecord>();
+  private readonly identities = new Map<string, IdentityRecord>();
+  private readonly grants = new Map<string, GrantRecord>();
+
+  async upsertActor(record: ActorRecord): Promise<ActorRecord> {
+    this.actors.set(record.actorId, record);
+    return record;
+  }
+
+  async upsertGroup(record: GroupRecord): Promise<GroupRecord> {
+    this.groups.set(record.groupId, record);
+    return record;
+  }
+
+  async upsertIdentity(record: IdentityRecord): Promise<IdentityRecord> {
+    this.identities.set(record.identityId, record);
+    return record;
+  }
+
+  async addGrant(record: GrantRecord): Promise<GrantRecord> {
+    this.grants.set(record.grantId, record);
+    return record;
+  }
+
+  async listGrants(filter?: GrantListFilter): Promise<GrantRecord[]> {
+    return Array.from(this.grants.values())
+      .filter((grant) => {
+        if (filter?.workspaceId && grant.workspaceId !== filter.workspaceId) {
+          return false;
+        }
+        if (filter?.granteeType && grant.granteeType !== filter.granteeType) {
+          return false;
+        }
+        if (filter?.granteeId && grant.granteeId !== filter.granteeId) {
+          return false;
+        }
+        if (filter?.relation && grant.relation !== filter.relation) {
+          return false;
+        }
+        if (filter?.resourceType && grant.resourceType !== filter.resourceType) {
+          return false;
+        }
+        if (filter?.resourceId && grant.resourceId !== filter.resourceId) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => left.grantId.localeCompare(right.grantId));
+  }
 }
 
 export class InMemoryServiceCatalog implements ServiceCatalog {
@@ -66,7 +129,7 @@ export class InMemoryBindingResolver implements BindingResolver {
     const timestamp = nowIso();
     const records = Object.entries(manifest.bindings).map(([requirement, binding]) => {
       const record: BindingRecord = {
-        bindingId: `${scope.tenantId}:${scope.projectId ?? "tenant"}:${manifest.environment}:${requirement}`,
+        bindingId: `${scope.workspaceId}:${scope.projectId ?? "workspace"}:${manifest.environment}:${requirement}`,
         scope,
         environment: manifest.environment,
         requirement,
@@ -107,6 +170,83 @@ export class InMemoryBindingResolver implements BindingResolver {
       capabilityId: record.capabilityId,
       model: record.model
     };
+  }
+}
+
+export class InMemoryManifestRegistry implements ManifestRegistry {
+  private readonly records: ManifestRecord[] = [];
+
+  async registerManifest(options: {
+    scope: ScopeRef;
+    manifest: PlatformManifest;
+    lifecycleState?: ManifestLifecycleState;
+  }): Promise<ManifestRecord> {
+    const timestamp = nowIso();
+    const record: ManifestRecord = {
+      manifestId: `manifest_${crypto.randomUUID().replace(/-/g, "")}`,
+      resourceId: options.manifest.id,
+      kind: options.manifest.kind,
+      scope: options.scope,
+      version: options.manifest.version,
+      lifecycleState: options.lifecycleState ?? "active",
+      manifest: options.manifest,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    this.records.push(record);
+    return record;
+  }
+
+  async listManifests(options?: {
+    scope?: ScopeRef;
+    kind?: PlatformManifest["kind"];
+    resourceId?: string;
+    lifecycleStates?: ManifestLifecycleState[];
+  }): Promise<ManifestRecord[]> {
+    return this.records
+      .filter((record) => {
+        if (options?.scope && !sameScope(record.scope, options.scope)) {
+          return false;
+        }
+        if (options?.kind && record.kind !== options.kind) {
+          return false;
+        }
+        if (options?.resourceId && record.resourceId !== options.resourceId) {
+          return false;
+        }
+        if (options?.lifecycleStates && !options.lifecycleStates.includes(record.lifecycleState)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => {
+        if (left.kind !== right.kind) {
+          return left.kind.localeCompare(right.kind);
+        }
+        if (left.resourceId !== right.resourceId) {
+          return left.resourceId.localeCompare(right.resourceId);
+        }
+        return right.version - left.version;
+      });
+  }
+
+  async resolveManifest(options: {
+    scope: ScopeRef;
+    kind: PlatformManifest["kind"];
+    resourceId: string;
+    version?: number;
+    lifecycleStates?: ManifestLifecycleState[];
+  }): Promise<ManifestRecord | null> {
+    const manifests = await this.listManifests({
+      scope: options.scope,
+      kind: options.kind,
+      resourceId: options.resourceId,
+      lifecycleStates: options.lifecycleStates ?? ["active"]
+    });
+    if (options.version !== undefined) {
+      return manifests.find((manifest) => manifest.version === options.version) ?? null;
+    }
+    return manifests[0] ?? null;
   }
 }
 
@@ -195,6 +335,8 @@ export class InMemoryUsageLedger implements UsageLedger {
 
 export function createInMemoryCoreRepositories() {
   return {
+    accessGraphRepository: new InMemoryAccessGraphRepository(),
+    manifestRegistry: new InMemoryManifestRegistry(),
     serviceCatalog: new InMemoryServiceCatalog(),
     bindingResolver: new InMemoryBindingResolver(),
     runRepository: new InMemoryRunRepository(),

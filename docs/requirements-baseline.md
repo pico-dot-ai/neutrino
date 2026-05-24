@@ -38,7 +38,7 @@ Do not use `docs/data-structure-ref/` for this phase. Those files are reserved f
 - `Open`: not sufficiently defined yet
 
 ## Product Goal
-Build picoAI as a composable AI service platform: a system for defining, running, reusing, and governing AI systems through simple files, stable schema and ports, tenant-safe execution, and builder UIs that operate as control planes over the same resources.
+Build picoAI as a composable AI service platform: a system for defining, running, reusing, and governing AI systems through simple files, stable schema and ports, workspace-safe execution, and builder UIs that operate as control planes over the same resources.
 
 ## Confirmed Requirements
 
@@ -69,19 +69,30 @@ Build picoAI as a composable AI service platform: a system for defining, running
 ### Product Model
 | ID | Status | Requirement |
 | --- | --- | --- |
-| PR-001 | Accepted | Services are the core reusable platform unit. Apps are user-facing surfaces and control planes over services. |
+| PR-001 | Accepted | Apps are the developer-facing product artifact. Apps publish objects, actions, views, and visibility rules; services are reusable implementation units behind app actions. |
 | PR-002 | Accepted | Builder UIs must produce and edit the same file-defined resources that can be edited directly. They must not create hidden app-specific resource structures. |
-| PR-003 | Accepted | The initial platform grammar must include app manifests, service definitions, service bindings, capability definitions, agent definitions, skill definitions, harness definitions, conversation definitions, eval definitions, policy definitions, tenant scope, and run records. |
-| PR-004 | Accepted | The first implementation milestone should prove one vertical path: tenant -> project -> app manifest -> agent service -> skill -> harness service -> LLM binding -> conversation runtime -> run record -> trace -> eval result. |
-| PR-005 | Accepted | The first implementation should support service donation: one app can expose a reusable service or capability that another app or agent can consume through the catalog. |
+| PR-003 | Accepted | The initial platform grammar must center on apps, objects, actions, views, visibility, services, policies, schemas, bindings, executions, and records, with agents, skills, tools, evals, traces, artifacts, runtimes, workflows, and capabilities kept subordinate unless implementation proves they must be promoted. |
+| PR-004 | Accepted | The first implementation milestone should prove one vertical path: workspace -> project -> app manifest -> object/action -> service -> skill -> binding -> conversation runtime -> execution record -> trace -> eval result. |
+| PR-005 | Accepted | The first implementation should support service reuse behind actions: one app can expose an action that uses a versioned service package, including services donated by other apps when visibility and grants allow it. |
+| PR-006 | Accepted | Recipes and templates are deferred scaffolding conveniences, not first-class product artifacts, exposed services, or core runtime resources in the current plan of record. |
+| PR-007 | Accepted | Developer-facing product vocabulary should emphasize apps, objects, actions, views, handlers, visibility, policies, and history. Services remain visible to developers as reusable implementation packages, but are not the primary app surface. |
+| PR-008 | Accepted | Services must use package-style namespaced identity in the shape `@scope/service-name@version`; `@pico/*` is reserved for first-party platform services and workspace/company namespaces such as `@acme/*` identify company-owned services. |
+| PR-009 | Accepted | Durable shared services should generally use owner or workspace namespaces rather than app namespaces; app-private generated services may exist only when explicitly marked private or project-scoped. |
+| PR-010 | Accepted | Service manifests are not Docker-like or OCI-like packaging specs; image, entrypoint, port, healthcheck, compose, and sidecar details are deferred implementation/runtime/binding concerns behind `Service`. |
 
 ### Platform Core
 | ID | Status | Requirement |
 | --- | --- | --- |
-| PK-001 | Accepted | The platform core must own tenant-safe durable records for tenants, organizations, teams, projects, users, groups, roles, policies, app installations, services, service versions, capabilities, invocations, artifacts, memory, events, runs, traces, audit events, usage, and cost. |
-| PK-002 | Accepted | Every core durable object must carry enough scope metadata to support tenant, organization, team, project, app installation, service, agent, harness, conversation, run, artifact, and user boundaries. |
-| PK-003 | Accepted | Authorization must cover user-to-service and service-to-service access decisions. |
+| PK-001 | Accepted | The platform core must own durable records for workspaces, orgs, projects, actors, groups, identities, grants, policies, app packages, app versions, app installations, object types, app objects, action definitions, services, service versions, bindings, executions, records, artifacts, memory, traces, audit events, usage, and cost. |
+| PK-002 | Accepted | Every core durable object must carry enough scope metadata to support workspace, org, group, project, app installation, service, agent, harness, conversation, execution, artifact, and actor boundaries. |
+| PK-003 | Accepted | Authorization must cover actor-to-app, actor-to-action, actor-to-object, actor-to-service, and service-to-service access decisions. |
 | PK-004 | Accepted | The catalog/resolver must validate manifests, register resources, resolve required services against bindings, select versions, check permissions, and produce a runtime execution plan. |
+| PK-005 | Accepted | The platform must provide a scoped manifest registry/catalog so each app, object, action, view, service, agent, skill, harness, conversation, eval, binding, and policy manifest can be created, versioned, listed, resolved, and audited across workspaces, orgs, groups, projects, app installations, and actors. |
+| PK-006 | Accepted | A `pico.service` manifest must support service package name, version, summary, input/output schema references, policy, tools used, skills followed, emitted record types, and optional subordinate service interface functions. A `pico.app` manifest must support objects, actions, views, handlers, and visibility. |
+| PK-007 | Accepted | Every execution must reference action ID where applicable, service package name and version, actor, applicable scope, policy snapshot, binding snapshot, schema versions, and tool/service dependency versions where applicable. |
+| PK-008 | Accepted | Bindings must be snapshot-capable so executions can reference the concrete provider, tool, resource, or service dependency resolution used at execution time. |
+| PK-009 | Accepted | Records must be append-only typed JSONL facts emitted during execution, schema-validated by record type, and scoped to workspace/project/actor/action/service context. |
+| PK-010 | Accepted | Retrieval must never bypass policy; vector rows derived from restricted records or artifacts must inherit equivalent workspace, scope, classification, and visibility restrictions. |
 
 ### Auth and Identity
 | ID | Status | Requirement |
@@ -116,6 +127,7 @@ Build picoAI as a composable AI service platform: a system for defining, running
 - Marketplace or public ecosystem distribution.
 - Physical microservice extraction beyond concrete deployment need.
 - Full workflow automation platform.
+- First-class recipe or template product surfaces; recipes/templates may remain handy scaffolding mechanisms, but their representation and UX are deferred.
 - Enterprise SSO and SCIM implementation, beyond contract shape and migration path.
 - Dedicated vector engine as the default before pgvector proves insufficient.
 - General task, calendar, or item data modeling from `docs/data-structure-ref/`.
@@ -128,6 +140,9 @@ Build picoAI as a composable AI service platform: a system for defining, running
 - Do not couple feature logic to a single cloud runtime when the contract expects Cloud Run and App Runner portability.
 - Do not put blob bytes in Postgres except for tiny metadata or structured records.
 - Do not implement Agent Builder, Harness Builder, or Service Builder as isolated systems with private resource structures.
+- Do not model service definitions as container packaging specs before a concrete runtime need exists.
+- Do not model member, team_member, role, or permission_set as first-cut schema primitives.
+- Do not allow execution without actor, record without scope, retrieval without policy, service without version, binding without snapshot, or output without schema.
 
 ## Open Questions for the Implementation Plan
 1. Resolved: the first demo app/service domain used to prove service donation is the Dev Agent vertical.

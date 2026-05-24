@@ -2,7 +2,14 @@ import { createServer } from "node:http";
 import { Readable } from "node:stream";
 import { z } from "zod";
 import type { LanguageModelProvider } from "@neutrino/ports";
-import type { ChatMessage } from "@neutrino/schema";
+import type {
+  ChatMessage,
+  PlatformManifest,
+  PicoAgentManifest,
+  PicoAppManifest,
+  PicoBindingManifest,
+  PicoHarnessManifest
+} from "@neutrino/schema";
 import {
   createInMemoryCoreRepositories,
   DevAgentRuntime,
@@ -18,6 +25,13 @@ import { createPlatformControlPlane } from "@neutrino/platform-gateway";
 import type { ApiEnv } from "./env";
 
 const chatRequestSchema = z.object({
+  runtime: z
+    .object({
+      workspaceId: z.string().min(1).optional(),
+      projectId: z.string().min(1).optional(),
+      agentId: z.string().min(1).optional()
+    })
+    .optional(),
   messages: z
     .array(
       z.object({
@@ -103,13 +117,24 @@ function isAuthorized(request: Request, env: ApiEnv) {
 }
 
 const devAgentScope = {
-  tenantId: "tenant_picoai",
+  workspaceId: "workspace_picoai",
   projectId: "project_dev_agent"
 };
 
 function randomId(prefix: string) {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
 }
+
+type RuntimeManifests = {
+  scope: {
+    workspaceId: string;
+    projectId: string;
+  };
+  app: PicoAppManifest;
+  agent: PicoAgentManifest;
+  harness: PicoHarnessManifest;
+  binding: PicoBindingManifest;
+};
 
 export function createAppHandler(options: {
   aiProvider: LanguageModelProvider;
@@ -127,20 +152,107 @@ export function createAppHandler(options: {
 
   function ensureDevAgentBootstrap() {
     devAgentBootstrapPromise ??= (async () => {
-      [
+      const manifests = [
         devAgentAppManifest,
         devAgentServiceManifest,
         devAgentSkillManifest,
         devAgentHarnessManifest,
         devAgentManifest,
         devAgentLocalBindingManifest
-      ].forEach(validatePlatformManifest);
+      ].map(validatePlatformManifest);
 
-      await core.serviceCatalog.registerService(devAgentServiceManifest);
+      for (const manifest of manifests) {
+        await core.manifestRegistry.registerManifest({
+          scope: devAgentScope,
+          manifest
+        });
+      }
+
+      const serviceRecord = await core.manifestRegistry.resolveManifest({
+        scope: devAgentScope,
+        kind: "pico.service",
+        resourceId: devAgentServiceManifest.id
+      });
+      const serviceManifest = serviceRecord?.manifest;
+      if (!serviceManifest || serviceManifest.kind !== "pico.service") {
+        throw new Error("Missing Dev Agent service manifest.");
+      }
+
+      await core.serviceCatalog.registerService(serviceManifest);
       await core.bindingResolver.registerBinding(devAgentScope, devAgentLocalBindingManifest);
     })();
 
     return devAgentBootstrapPromise;
+  }
+
+  async function resolveRuntimeManifests(options?: {
+    workspaceId?: string;
+    projectId?: string;
+    agentId?: string;
+  }): Promise<RuntimeManifests> {
+    await ensureDevAgentBootstrap();
+    const scope = {
+      workspaceId: options?.workspaceId ?? devAgentScope.workspaceId,
+      projectId: options?.projectId ?? devAgentScope.projectId
+    };
+    const agentId = options?.agentId ?? devAgentManifest.id;
+
+    const agentRecord = await core.manifestRegistry.resolveManifest({
+      scope,
+      kind: "pico.agent",
+      resourceId: agentId
+    });
+    const agentManifest = agentRecord?.manifest;
+    if (!agentManifest || agentManifest.kind !== "pico.agent") {
+      throw new Error(`Unable to resolve agent manifest for ${agentId}.`);
+    }
+
+    const harnessId = agentManifest.harness;
+    if (!harnessId) {
+      throw new Error(`Agent ${agentId} is missing a harness reference.`);
+    }
+    const harnessRecord = await core.manifestRegistry.resolveManifest({
+      scope,
+      kind: "pico.harness",
+      resourceId: harnessId
+    });
+    const harnessManifest = harnessRecord?.manifest;
+    if (!harnessManifest || harnessManifest.kind !== "pico.harness") {
+      throw new Error(`Unable to resolve harness manifest for ${harnessId}.`);
+    }
+
+    const appRecord = (
+      await core.manifestRegistry.listManifests({
+        scope,
+        kind: "pico.app"
+      })
+    ).find((record) => {
+      const manifest = record.manifest;
+      return manifest.kind === "pico.app" && manifest.agents?.includes(agentId);
+    });
+    const appManifest = appRecord?.manifest;
+    if (!appManifest || appManifest.kind !== "pico.app") {
+      throw new Error(`Unable to resolve app manifest for agent ${agentId}.`);
+    }
+
+    const bindingRecord = await core.manifestRegistry.resolveManifest({
+      scope,
+      kind: "pico.binding",
+      resourceId: devAgentLocalBindingManifest.id
+    });
+    const bindingManifest = bindingRecord?.manifest;
+    if (!bindingManifest || bindingManifest.kind !== "pico.binding") {
+      throw new Error("Unable to resolve binding manifest.");
+    }
+    await core.bindingResolver.registerBinding(scope, bindingManifest);
+
+    return {
+      scope,
+      app: appManifest,
+      agent: agentManifest,
+      harness: harnessManifest,
+      binding: bindingManifest
+    };
   }
 
   return async function handleRequest(request: Request): Promise<Response> {
@@ -161,10 +273,23 @@ export function createAppHandler(options: {
         }
 
         const payload = chatRequestSchema.parse(await request.json());
-        await ensureDevAgentBootstrap();
+        let runtimeManifests: RuntimeManifests;
+        try {
+          runtimeManifests = await resolveRuntimeManifests(payload.runtime);
+        } catch (error) {
+          return sse([
+            {
+              type: "error",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Unable to resolve runtime manifests."
+            }
+          ]);
+        }
         const languageModelBinding = await core.bindingResolver.resolveBinding({
-          scope: devAgentScope,
-          environment: devAgentLocalBindingManifest.environment,
+          scope: runtimeManifests.scope,
+          environment: runtimeManifests.binding.environment,
           requirement: "languageModel"
         });
 
@@ -179,7 +304,10 @@ export function createAppHandler(options: {
 
         const events = [];
         for await (const event of runtime.stream({
-          scope: devAgentScope,
+          scope: runtimeManifests.scope,
+          appId: runtimeManifests.app.id,
+          agentId: runtimeManifests.agent.id,
+          harnessId: runtimeManifests.harness.id,
           conversationId: randomId("conversation"),
           model: options.env.OPENAI_MODEL || languageModelBinding.model || "gpt-5.2",
           messages: payload.messages as ChatMessage[]
@@ -312,6 +440,20 @@ export function createAppHandler(options: {
             runs: runsWithTraces,
             usage
           });
+        }
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/manifests") {
+          await ensureDevAgentBootstrap();
+          const url = new URL(request.url);
+          const kind = url.searchParams.get("kind");
+          const resourceId = url.searchParams.get("resourceId");
+          const manifests = await core.manifestRegistry.listManifests({
+            scope: devAgentScope,
+            ...(kind ? { kind: kind as PlatformManifest["kind"] } : {}),
+            ...(resourceId ? { resourceId } : {})
+          });
+
+          return json(200, { manifests });
         }
       }
 

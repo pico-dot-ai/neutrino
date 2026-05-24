@@ -1,5 +1,5 @@
 import type {
-  IdentityPrincipal,
+  AuthenticatedActor,
   PasswordAuthRequest
 } from "@neutrino/schema";
 import type { IdentityProvider } from "@neutrino/ports";
@@ -8,8 +8,7 @@ export type LocalIdentityUser = {
   username: string;
   password: string;
   email: string;
-  orgMemberships: string[];
-  roles: string[];
+  groups: string[];
 };
 
 export default class LocalIdentityAdapter implements IdentityProvider {
@@ -32,7 +31,7 @@ export default class LocalIdentityAdapter implements IdentityProvider {
 
   async authenticateWithPassword(
     request: PasswordAuthRequest
-  ): Promise<IdentityPrincipal | null> {
+  ): Promise<AuthenticatedActor | null> {
     const user = this.users.find(
       (candidate) => candidate.username === request.username
     );
@@ -42,11 +41,10 @@ export default class LocalIdentityAdapter implements IdentityProvider {
     }
 
     return {
-      subject: `local:${user.username}`,
+      actorId: `local:${user.username}`,
       username: user.username,
       email: user.email,
-      orgMemberships: user.orgMemberships,
-      roles: user.roles
+      groups: user.groups
     };
   }
 }

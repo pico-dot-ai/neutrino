@@ -17,6 +17,15 @@ const fakeLanguageModelProvider: LanguageModelProvider = {
   }
 };
 
+const failingLanguageModelProvider: LanguageModelProvider = {
+  async generate() {
+    throw new Error("Model provider failed.");
+  },
+  async *stream() {
+    throw new Error("Model provider failed.");
+  }
+};
+
 describe("DevAgentRuntime", () => {
   it("persists run, trace, and usage records", async () => {
     const core = createInMemoryCoreRepositories();
@@ -29,9 +38,12 @@ describe("DevAgentRuntime", () => {
 
     const result = await runtime.run({
       scope: {
-        tenantId: "tenant_1",
+        workspaceId: "workspace_1",
         projectId: "project_1"
       },
+      appId: "pico.dev-agent",
+      agentId: "pico.dev-agent.agent",
+      harnessId: "pico.dev-agent.harness",
       conversationId: "conversation_1",
       model: "gpt-test",
       messages: [
@@ -60,9 +72,12 @@ describe("DevAgentRuntime", () => {
     const events = [];
     for await (const event of runtime.stream({
       scope: {
-        tenantId: "tenant_1",
+        workspaceId: "workspace_1",
         projectId: "project_1"
       },
+      appId: "pico.dev-agent",
+      agentId: "pico.dev-agent.agent",
+      harnessId: "pico.dev-agent.harness",
       conversationId: "conversation_1",
       model: "gpt-test",
       messages: [
@@ -88,5 +103,37 @@ describe("DevAgentRuntime", () => {
       }
     ]);
     await expect(core.usageLedger.listUsage()).resolves.toHaveLength(1);
+  });
+
+  it("records failed runs and runtime.failed trace entries", async () => {
+    const core = createInMemoryCoreRepositories();
+    const runtime = new DevAgentRuntime({
+      languageModelProvider: failingLanguageModelProvider,
+      runRepository: core.runRepository,
+      traceRepository: core.traceRepository,
+      usageLedger: core.usageLedger
+    });
+
+    const result = await runtime.run({
+      scope: {
+        workspaceId: "workspace_1",
+        projectId: "project_1"
+      },
+      appId: "pico.dev-agent",
+      agentId: "pico.dev-agent.agent",
+      harnessId: "pico.dev-agent.harness",
+      conversationId: "conversation_1",
+      model: "gpt-test",
+      messages: [
+        {
+          role: "user",
+          content: "Write a test response."
+        }
+      ]
+    });
+
+    expect(result.run.status).toBe("failed");
+    expect(result.run.error).toBe("Model provider failed.");
+    expect(result.traces.map((trace) => trace.eventType)).toContain("runtime.failed");
   });
 });

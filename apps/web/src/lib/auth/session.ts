@@ -1,13 +1,13 @@
-import type { IdentityPrincipal } from "@neutrino/schema";
+import type { AuthenticatedActor } from "@neutrino/schema";
 import { createSignedCookieSessionManager } from "@neutrino/identity-gateway";
 import { getAuthPolicyEnv } from "@/lib/config";
 import { SESSION_COOKIE_NAME } from "./constants";
 
-export async function issueAdminSession(principal: IdentityPrincipal) {
+export async function issueAdminSession(actor: AuthenticatedActor) {
   const authEnv = getAuthPolicyEnv();
   const sessionManager = createSignedCookieSessionManager(authEnv.APP_SESSION_SECRET);
   return sessionManager.issueSession({
-    principal,
+    actor,
     ttlSeconds: authEnv.APP_SESSION_TTL_SECONDS
   });
 }

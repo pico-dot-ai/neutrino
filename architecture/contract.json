@@ -1,13 +1,17 @@
 {
   "name": "neutrino-architecture-contract",
-  "version": "1.5.0",
-  "lastUpdated": "2026-05-17",
+  "version": "1.7.0",
+  "lastUpdated": "2026-05-24",
   "purpose": "Define architecture in one place and enforce implementation conformance for a composable AI service platform.",
   "principles": [
     "All infrastructure integrations must be implemented as adapters behind stable ports.",
     "Application code imports schema and ports, not concrete infrastructure adapters.",
     "app_id is the canonical app identity key across control-plane and runtime surfaces.",
-    "Services are the core reusable unit; apps are user-facing surfaces and control planes over services.",
+    "Apps are the developer-facing product artifact; apps publish objects, actions, views, and visibility rules.",
+    "Services are reusable implementation units behind actions, not first-class product artifacts.",
+    "Service identity must be package-style, namespaced, and versioned.",
+    "Service definitions are product/platform manifests, not Docker-like container packaging specs.",
+    "The minimum internal kernel is Workspace, Org, Project, Actor, Group, Identity, Grant, App, Object, Action, Service, Policy, Schema, Binding, Execution, and Record.",
     "File-defined resources must round-trip with builder UIs instead of creating hidden app-specific resource structures.",
     "Auth, storage, memory, artifacts, catalog, invocation, observability, and policy are platform core concerns.",
     "Postgres is the durable system of record for core state; vector and realtime systems can be swapped.",
@@ -29,6 +33,182 @@
       "sharedPackage": "packages/ui",
       "rule": "Frontend features consume shared tokens and primitives instead of ad hoc page-level systems."
     }
+  },
+  "accessModel": {
+    "productVocabulary": [
+      "Workspace is the top-level collaboration and billing/security boundary.",
+      "Org is a publisher, customer, vendor, or legal/business entity inside a workspace.",
+      "Project groups app installations and runtime work inside a workspace.",
+      "Actor is anything that can perform an action: a human, service account, app, or system process.",
+      "Group is the Unix-style collection primitive for teams, departments, customers, environments, or cohorts.",
+      "Identity links an actor to a login, SSO account, API key, or service credential.",
+      "Grant records what an actor or group can access."
+    ],
+    "rules": [
+      "Do not model member, team_member, role, or permission_set as first-cut schema primitives.",
+      "Represent team and org structure through groups plus grants unless a concrete use case proves a separate table is needed.",
+      "Support SSO through identity records linked to actors, not by special-casing users in product schema.",
+      "Visibility governs app, action, object, view, and service exposure: internal, public, or explicitly allowed workspaces/orgs/groups/actors."
+    ]
+  },
+  "serviceModel": {
+    "userFacingVocabulary": [
+      "Apps publish product surfaces.",
+      "Objects represent app-defined things such as tickets, documents, accounts, or messages.",
+      "Actions mutate or retrieve app-backed data and may be exposed through MCP tools.",
+      "Views render objects with app-defined display metadata where the host supports it.",
+      "Services implement reusable work behind actions.",
+      "Tools provide access.",
+      "Skills guide behavior.",
+      "Policies control who and what is allowed.",
+      "History shows what happened."
+    ],
+    "demotedProductNouns": [
+      "capability",
+      "operation"
+    ],
+    "internalKernel": [
+      {
+        "name": "App",
+        "definition": "Versioned product package published by an org/workspace that exposes objects, actions, views, and visibility rules."
+      },
+      {
+        "name": "Object",
+        "definition": "Small app-defined representation of a thing, with schema and optional display metadata."
+      },
+      {
+        "name": "Action",
+        "definition": "App-defined callable operation that can use handlers or reusable services to read or mutate objects."
+      },
+      {
+        "name": "Service",
+        "definition": "Versioned reusable implementation unit that can be installed, invoked by actions, donated, and governed."
+      },
+      {
+        "name": "Policy",
+        "definition": "Identity, auth, authorization, scope, data boundary, approval, retention, sharing, and audit rules."
+      },
+      {
+        "name": "Schema",
+        "definition": "Contracts for inputs, outputs, events, records, stored objects, and service configuration."
+      },
+      {
+        "name": "Binding",
+        "definition": "Concrete resolution of a provider, tool, resource, or service dependency in a workspace, project, environment, app, or service scope."
+      },
+      {
+        "name": "Execution",
+        "definition": "A single durable unit of work performed by a service."
+      },
+      {
+        "name": "Record",
+        "definition": "Append-only typed JSONL fact emitted during execution."
+      }
+    ],
+    "serviceIdentity": {
+      "format": "@scope/service-name@version",
+      "reservedNamespaces": [
+        {
+          "namespace": "@pico/*",
+          "meaning": "First-party platform services and defaults."
+        }
+      ],
+      "workspaceNamespaceRule": "Workspace and company namespaces such as @acme/* identify company-owned services that can be installed, reused, and governed.",
+      "sharedServiceRule": "Durable shared services should generally use owner or workspace namespaces rather than app namespaces.",
+      "privateServiceRule": "App-private generated services may exist, but must be explicitly marked private or project-scoped.",
+      "examples": [
+        "@pico/agent-builder@1.0.0",
+        "@pico/default-agent-runtime@1.0.0",
+        "@acme/ticket-triage@1.2.0",
+        "@acme/customer-memory@1.0.0"
+      ]
+    },
+    "serviceDefinition": {
+      "manifestKind": "pico.service",
+      "requiredFields": [
+        "name",
+        "version",
+        "summary",
+        "schema.input",
+        "schema.output",
+        "policy"
+      ],
+      "commonFields": [
+        "does",
+        "uses.tools",
+        "follows.skills",
+        "records.emit",
+        "interface.functions"
+      ],
+      "containerPackagingBoundary": "Service manifests do not currently define Docker or OCI images, compose files, container entrypoints, exposed ports, sidecars, or healthchecks. If container/image execution is needed later, it belongs under implementation/runtime/binding details behind Service, not in the core product model."
+    },
+    "subordinateConcepts": [
+      {
+        "name": "Agent",
+        "role": "Service implementation strategy."
+      },
+      {
+        "name": "Harness",
+        "role": "Service/runtime implementation detail or operational scaffold."
+      },
+      {
+        "name": "Skill",
+        "role": "Service or agent implementation asset."
+      },
+      {
+        "name": "Tool",
+        "role": "Binding target or internal dependency."
+      },
+      {
+        "name": "Eval",
+        "role": "Policy-attached check or execution/record validation result."
+      },
+      {
+        "name": "Trace",
+        "role": "Structured records attached to an execution."
+      },
+      {
+        "name": "Artifact",
+        "role": "Input, output, or storage reference attached to an execution."
+      },
+      {
+        "name": "Runtime",
+        "role": "Execution adapter or implementation detail."
+      },
+      {
+        "name": "Workflow",
+        "role": "Service implementation strategy."
+      },
+      {
+        "name": "Capability/action/operation",
+        "role": "Avoid as primary nouns; at most technical service interface details."
+      }
+    ],
+    "recipeBoundary": "Recipes, starters, and templates are deferred scaffolding conveniences, not first-class product artifacts, exposed services, or core runtime resources.",
+    "executionInvariants": [
+      "No execution without actor.",
+      "No record without scope.",
+      "No retrieval without policy.",
+      "No service without version.",
+      "No binding without snapshot.",
+      "No output without schema."
+    ],
+    "executionMustReference": [
+      "service package name and version",
+      "actor",
+      "workspace/org/group/project/app/service scope where applicable",
+      "policy snapshot",
+      "binding snapshot",
+      "schema versions",
+      "tool/service dependency versions where applicable"
+    ],
+    "recordAndStorageModel": [
+      "Append-only JSONL record streams capture canonical chronological facts.",
+      "Postgres owns relational indexes, metadata, execution status, service/package metadata, policy decisions, binding snapshots, and operational source of truth.",
+      "Blob/ObjectStorage owns large inputs, outputs, transcripts, files, traces, and generated artifacts.",
+      "Vector indexes may cover selected records/artifacts only and must inherit policy metadata from source records/artifacts.",
+      "Materialized views may power service history, usage, cost, eval outcome, audit, and product UI summaries."
+    ]
   },
   "runtimeBoundaries": {
     "apps": [

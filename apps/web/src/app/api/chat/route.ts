@@ -4,6 +4,13 @@ import { getProxyEnv } from "@/lib/config";
 import { requireAdminSession } from "@/lib/auth/request-auth";
 
 const requestSchema = z.object({
+  runtime: z
+    .object({
+      workspaceId: z.string().min(1).optional(),
+      projectId: z.string().min(1).optional(),
+      agentId: z.string().min(1).optional()
+    })
+    .optional(),
   messages: z
     .array(
       z.object({

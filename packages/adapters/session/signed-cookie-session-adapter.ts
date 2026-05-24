@@ -1,12 +1,12 @@
 import type {
+  AuthenticatedActor,
   AuthSession,
-  IdentityPrincipal
 } from "@neutrino/schema";
 import type { SessionManager } from "@neutrino/ports";
 
 type SessionPayload = {
   sessionId: string;
-  principal: IdentityPrincipal;
+  actor: AuthenticatedActor;
   issuedAt: string;
   expiresAt: string;
 };
@@ -60,14 +60,14 @@ export default class SignedCookieSessionAdapter implements SessionManager {
   constructor(private readonly secret: string) {}
 
   async issueSession(options: {
-    principal: IdentityPrincipal;
+    actor: AuthenticatedActor;
     ttlSeconds: number;
   }): Promise<string> {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + options.ttlSeconds * 1000);
     const payload: SessionPayload = {
       sessionId: crypto.randomUUID(),
-      principal: options.principal,
+      actor: options.actor,
       issuedAt: now.toISOString(),
       expiresAt: expiresAt.toISOString()
     };

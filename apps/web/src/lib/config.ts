@@ -23,8 +23,7 @@ const localIdentityUserSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   email: z.string().email(),
-  orgMemberships: z.array(z.string().min(1)).min(1),
-  roles: z.array(z.string().min(1)).min(1)
+  groups: z.array(z.string().min(1)).min(1)
 });
 
 const localIdentityUsersSchema = z.array(localIdentityUserSchema).min(1);
@@ -61,8 +60,7 @@ export function getLocalIdentityUsers(): LocalIdentityUser[] {
         username: "admin",
         password: "admin",
         email: "admin@pico.ai",
-        orgMemberships: ["picoai"],
-        roles: ["app_admin", "org_admin"]
+        groups: ["picoai", "app_admin", "org_admin"]
       }
     ];
   }

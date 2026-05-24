@@ -1,6 +1,6 @@
 import type {
+  AuthenticatedActor,
   AuthSession,
-  IdentityPrincipal,
   IdentityProviderCapabilities,
   IdentityProtocol,
   PasswordAuthRequest,
@@ -13,15 +13,15 @@ export interface IdentityProvider {
   capabilities: IdentityProviderCapabilities;
   authenticateWithPassword?(
     request: PasswordAuthRequest
-  ): Promise<IdentityPrincipal | null>;
+  ): Promise<AuthenticatedActor | null>;
   validateToken?(
     request: TokenValidationRequest
-  ): Promise<IdentityPrincipal | null>;
+  ): Promise<AuthenticatedActor | null>;
 }
 
 export interface SessionManager {
   issueSession(options: {
-    principal: IdentityPrincipal;
+    actor: AuthenticatedActor;
     ttlSeconds: number;
   }): Promise<string>;
   readSession(token: string): Promise<AuthSession | null>;
@@ -29,7 +29,7 @@ export interface SessionManager {
 }
 
 export type PolicyDecisionRequest = {
-  subject: string;
+  actorId: string;
   action: string;
   resource: string;
   scope?: Record<string, string | undefined>;

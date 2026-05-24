@@ -1,14 +1,14 @@
-import type { IdentityPrincipal } from "@neutrino/schema";
+import type { AuthenticatedActor } from "@neutrino/schema";
 import {
-  REQUIRED_ADMIN_ROLE,
+  REQUIRED_ADMIN_GROUP,
   REQUIRED_EMAIL_DOMAIN,
-  REQUIRED_ORG_MEMBERSHIP
+  REQUIRED_ORG_GROUP
 } from "./constants";
 
-export function isEligibleAdminPrincipal(principal: IdentityPrincipal) {
-  const hasRole = principal.roles.includes(REQUIRED_ADMIN_ROLE);
-  const hasOrgMembership = principal.orgMemberships.includes(REQUIRED_ORG_MEMBERSHIP);
-  const hasDomain = principal.email.toLowerCase().endsWith(REQUIRED_EMAIL_DOMAIN);
+export function isEligibleAdminActor(actor: AuthenticatedActor) {
+  const hasAdminGroup = actor.groups.includes(REQUIRED_ADMIN_GROUP);
+  const hasOrgGroup = actor.groups.includes(REQUIRED_ORG_GROUP);
+  const hasDomain = actor.email.toLowerCase().endsWith(REQUIRED_EMAIL_DOMAIN);
 
-  return hasRole && hasOrgMembership && hasDomain;
+  return hasAdminGroup && hasOrgGroup && hasDomain;
 }

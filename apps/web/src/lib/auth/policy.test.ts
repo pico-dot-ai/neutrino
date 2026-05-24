@@ -1,37 +1,36 @@
 import { describe, expect, it } from "vitest";
-import type { IdentityPrincipal } from "@neutrino/schema";
-import { isEligibleAdminPrincipal } from "./policy";
+import type { AuthenticatedActor } from "@neutrino/schema";
+import { isEligibleAdminActor } from "./policy";
 
-function basePrincipal(overrides?: Partial<IdentityPrincipal>): IdentityPrincipal {
+function baseActor(overrides?: Partial<AuthenticatedActor>): AuthenticatedActor {
   return {
-    subject: "local:admin",
+    actorId: "local:admin",
     username: "admin",
     email: "admin@pico.ai",
-    orgMemberships: ["picoai"],
-    roles: ["app_admin"],
+    groups: ["picoai", "app_admin"],
     ...overrides
   };
 }
 
-describe("isEligibleAdminPrincipal", () => {
-  it("accepts principal with role, org membership, and domain", () => {
-    expect(isEligibleAdminPrincipal(basePrincipal())).toBe(true);
+describe("isEligibleAdminActor", () => {
+  it("accepts actor with admin group, org group, and domain", () => {
+    expect(isEligibleAdminActor(baseActor())).toBe(true);
   });
 
-  it("rejects principal without app_admin role", () => {
+  it("rejects actor without app_admin group", () => {
     expect(
-      isEligibleAdminPrincipal(
-        basePrincipal({
-          roles: ["viewer"]
+      isEligibleAdminActor(
+        baseActor({
+          groups: ["picoai", "viewer"]
         })
       )
     ).toBe(false);
   });
 
-  it("rejects principal outside pico.ai domain", () => {
+  it("rejects actor outside pico.ai domain", () => {
     expect(
-      isEligibleAdminPrincipal(
-        basePrincipal({
+      isEligibleAdminActor(
+        baseActor({
           email: "admin@example.com"
         })
       )

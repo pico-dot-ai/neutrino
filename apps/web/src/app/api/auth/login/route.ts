@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateLocalIdentity } from "@/lib/auth/identity";
-import { isEligibleAdminPrincipal } from "@/lib/auth/policy";
+import { isEligibleAdminActor } from "@/lib/auth/policy";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { issueAdminSession } from "@/lib/auth/session";
 
@@ -26,23 +26,23 @@ function sanitizeNext(next: string | undefined) {
 export async function POST(request: Request) {
   try {
     const payload = loginSchema.parse(await request.json());
-    const principal = await authenticateLocalIdentity({
+    const actor = await authenticateLocalIdentity({
       username: payload.username,
       password: payload.password
     });
 
-    if (!principal) {
+    if (!actor) {
       return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
     }
 
-    if (!isEligibleAdminPrincipal(principal)) {
+    if (!isEligibleAdminActor(actor)) {
       return NextResponse.json(
         { error: "App admin privileges are required for this console." },
         { status: 403 }
       );
     }
 
-    const token = await issueAdminSession(principal);
+    const token = await issueAdminSession(actor);
     const response = NextResponse.json({ ok: true, redirectTo: sanitizeNext(payload.next) });
 
     response.cookies.set({

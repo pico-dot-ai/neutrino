@@ -1,9 +1,11 @@
 import type { LanguageModelProvider, RunRepository, TraceRepository, UsageLedger } from "@neutrino/ports";
 import type { ChatMessage, RunRecord, ScopeRef, StreamEvent, TraceRecord, UsageRecord } from "@neutrino/schema";
-import { devAgentHarnessManifest, devAgentManifest, devAgentAppManifest } from "../dev-agent/manifests";
 
 export type DevAgentRuntimeRequest = {
   scope: ScopeRef;
+  appId: string;
+  agentId: string;
+  harnessId: string;
   conversationId: string;
   messages: ChatMessage[];
   model: string;
@@ -38,9 +40,9 @@ export class DevAgentRuntime {
     const baseRun: RunRecord = {
       runId,
       scope: request.scope,
-      appId: devAgentAppManifest.id,
-      agentId: devAgentManifest.id,
-      harnessId: devAgentHarnessManifest.id,
+      appId: request.appId,
+      agentId: request.agentId,
+      harnessId: request.harnessId,
       conversationId: request.conversationId,
       status: "running",
       startedAt
@@ -107,9 +109,9 @@ export class DevAgentRuntime {
     const baseRun: RunRecord = {
       runId,
       scope: request.scope,
-      appId: devAgentAppManifest.id,
-      agentId: devAgentManifest.id,
-      harnessId: devAgentHarnessManifest.id,
+      appId: request.appId,
+      agentId: request.agentId,
+      harnessId: request.harnessId,
       conversationId: request.conversationId,
       status: "running",
       startedAt

@@ -14,6 +14,7 @@
 
 ## Notion Collaboration Rules
 - When the user asks about Notion documents or anything related to Notion, use the Notion connector. Only skip the connector when "notion" is plainly used as a generic English word rather than the product.
+- Before requesting a Notion plugin or connector install, check whether Notion tools are already exposed in the active tool list, especially `mcp__codex_apps__notion.*`; if they are present, use them directly and do not prompt the user to install Notion again.
 - The `Pico Agent Redux` Notion page is the collaborative product-direction workspace.
 - `Product Vision Capture` is for human-facing product concept, product layers, MVP shape, and broad service needs. Treat it as fluid planning input, not repo ground truth.
 - `Codex Repo Sync` is for agent-to-agent context exchange between Codex and ChatGPT. Treat it as a dated synchronization brief, but re-verify implementation facts from the repo before making code or architecture claims.

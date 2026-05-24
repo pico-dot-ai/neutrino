@@ -37,7 +37,7 @@
   <rect class="bg" width="1800" height="1220"/>
 
   <text class="title" x="70" y="76">Neutrino Intended Platform Architecture</text>
-  <text class="subtitle" x="72" y="112">Composable AI service platform: file-defined resources, reusable services, tenant-safe runtime, replaceable adapters, and push-to-deploy infrastructure.</text>
+  <text class="subtitle" x="72" y="112">Composable AI service platform: file-defined resources, reusable services, workspace-safe runtime, replaceable adapters, and push-to-deploy infrastructure.</text>
 
   <rect class="panel" x="55" y="145" width="1690" height="980"/>
 
@@ -89,7 +89,7 @@
   <text class="label" x="1372" y="276">Platform core concerns</text>
   <text class="small" x="1372" y="298">Auth, policy, invocation, memory</text>
   <text class="small" x="1372" y="318">Artifacts, observability, cost, audit</text>
-  <text class="code" x="1372" y="335">tenant-safe scope metadata</text>
+  <text class="code" x="1372" y="335">workspace-safe scope metadata</text>
 
   <rect class="chip" x="1040" y="365" width="285" height="88"/>
   <text class="label" x="1062" y="391">Service donation</text>
@@ -106,7 +106,7 @@
   <text class="section-title" x="115" y="594">First Intended Vertical Path</text>
 
   <rect class="chip" x="120" y="625" width="120" height="56"/>
-  <text class="label" x="139" y="651">Tenant</text>
+  <text class="label" x="139" y="651">Workspace</text>
   <text class="tiny" x="139" y="671">scope</text>
 
   <rect class="chip" x="265" y="625" width="135" height="56"/>

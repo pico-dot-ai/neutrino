@@ -2,7 +2,7 @@
 
 Neutrino is the working repo for picoAI's composable AI service platform.
 
-The product direction is to define, run, reuse, and govern AI systems through simple files, stable schema and ports, tenant-safe execution, and builder UIs that act as control planes over the same resources.
+The product direction is to define, run, reuse, and govern AI systems through simple files, stable schema and ports, workspace-safe execution, and builder UIs that act as control planes over the same resources.
 
 ## Current Baseline
 - `apps/web`: Next.js App Router frontend, intended for Vercel
@@ -14,8 +14,8 @@ The product direction is to define, run, reuse, and govern AI systems through si
 - `packages/platform-gateway`: control-plane catalog gateway wrapper
 
 ## Product Direction
-- Services are the core reusable platform unit.
-- Apps are user-facing surfaces and control planes over services.
+- Apps are developer-facing product packages that expose objects, actions, views, and visibility.
+- Services are reusable implementation units behind app actions.
 - Agents are reusable actor services.
 - Skills are reusable behavioral and procedural modules.
 - Harnesses are reusable operational environments around agents, not eval runners.
@@ -26,7 +26,7 @@ The product direction is to define, run, reuse, and govern AI systems through si
 ## First Implementation Direction
 The first serious implementation plan should prove one vertical path:
 
-`Tenant -> Project -> App manifest -> Agent service -> Skill -> Harness service -> LLM binding -> Conversation runtime -> Run record -> Trace -> Eval result`
+`Workspace -> Project -> App manifest -> Object/Action -> Service -> Skill -> Binding -> Conversation runtime -> Execution record -> Trace -> Eval result`
 
 The first run should also include:
 - real auth under `auth.pico.ai`
@@ -36,7 +36,7 @@ The first run should also include:
 - blob/artifact storage for uploaded and generated binary assets
 - explicit, scoped core memory records
 - catalog and resolver behavior for file-defined platform resources
-- service donation from one app/service to another consumer
+- service reuse from one app action to a versioned service package when visibility and grants allow it
 
 ## Documentation Map
 - `AGENTS.md`: coding-agent working rules
@@ -74,7 +74,7 @@ The Vercel-facing app also uses:
 - `APP_IDENTITY_USERS_JSON`
 - `APP_AUTH_ENABLED`
 
-In production, `APP_IDENTITY_USERS_JSON` is required and must contain at least one user with the `app_admin` role. See [docs/deployment-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/deployment-baseline.md) for the JSON shape.
+In production, `APP_IDENTITY_USERS_JSON` is required and must contain at least one actor with the `app_admin` group. See [docs/deployment-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/deployment-baseline.md) for the JSON shape.
 
 For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).
 

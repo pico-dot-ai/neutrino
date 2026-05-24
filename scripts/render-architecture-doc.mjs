@@ -10,6 +10,18 @@ function list(values) {
   return values.map((value) => `- \`${value}\``).join("\n");
 }
 
+function plainList(values) {
+  return values.map((value) => `- ${value}`).join("\n");
+}
+
+function definitionList(values) {
+  return values.map((value) => `- \`${value.name}\`: ${value.definition}`).join("\n");
+}
+
+function nameRoleList(values) {
+  return values.map((value) => `- \`${value.name}\`: ${value.role}`).join("\n");
+}
+
 export function renderArchitectureMarkdown(contract) {
   const ports = contract.ports
     .map((port) => {
@@ -24,6 +36,9 @@ export function renderArchitectureMarkdown(contract) {
       ].join("\n");
     })
     .join("\n\n");
+
+  const serviceModel = contract.serviceModel;
+  const accessModel = contract.accessModel;
 
   return `# Architecture Canonical View
 
@@ -50,6 +65,56 @@ ${list(contract.principles)}
   - Foundation: \`${contract.standards.designSystem.foundation}\`
   - Shared Package: \`${contract.standards.designSystem.sharedPackage}\`
   - Rule: ${contract.standards.designSystem.rule}
+
+## Access Model
+### Product Vocabulary
+${plainList(accessModel.productVocabulary)}
+
+### Rules
+${plainList(accessModel.rules)}
+
+## Service Model
+### User-Facing Vocabulary
+${plainList(serviceModel.userFacingVocabulary)}
+
+### Demoted Product Nouns
+${plainList(serviceModel.demotedProductNouns)}
+
+### Internal Kernel
+${definitionList(serviceModel.internalKernel)}
+
+### Service Identity
+- Format: \`${serviceModel.serviceIdentity.format}\`
+- Reserved namespaces:
+${serviceModel.serviceIdentity.reservedNamespaces.map((entry) => `  - \`${entry.namespace}\`: ${entry.meaning}`).join("\n")}
+- Workspace namespace rule: ${serviceModel.serviceIdentity.workspaceNamespaceRule}
+- Shared service rule: ${serviceModel.serviceIdentity.sharedServiceRule}
+- Private service rule: ${serviceModel.serviceIdentity.privateServiceRule}
+- Examples:
+${serviceModel.serviceIdentity.examples.map((example) => `  - \`${example}\``).join("\n")}
+
+### Service Definition
+- Manifest kind: \`${serviceModel.serviceDefinition.manifestKind}\`
+- Required fields:
+${serviceModel.serviceDefinition.requiredFields.map((field) => `  - \`${field}\``).join("\n")}
+- Common fields:
+${serviceModel.serviceDefinition.commonFields.map((field) => `  - \`${field}\``).join("\n")}
+- Container packaging boundary: ${serviceModel.serviceDefinition.containerPackagingBoundary}
+
+### Subordinate Concepts
+${nameRoleList(serviceModel.subordinateConcepts)}
+
+### Recipe Boundary
+${serviceModel.recipeBoundary}
+
+### Execution Invariants
+${plainList(serviceModel.executionInvariants)}
+
+### Execution References
+${plainList(serviceModel.executionMustReference)}
+
+### Record And Storage Model
+${plainList(serviceModel.recordAndStorageModel)}
 
 ## Runtime Boundaries
 ${list(contract.runtimeBoundaries.apps)}

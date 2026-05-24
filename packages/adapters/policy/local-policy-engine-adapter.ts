@@ -12,7 +12,7 @@ export default class LocalPolicyEngineAdapter implements PolicyEngine {
     const matchingRules = this.policies.flatMap((policy) =>
       policy.rules.filter(
         (rule) =>
-          matches(rule.subject, request.subject) &&
+          matches(rule.actor, request.actorId) &&
           matches(rule.action, request.action) &&
           matches(rule.resource, request.resource)
       )

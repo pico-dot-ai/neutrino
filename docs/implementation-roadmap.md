@@ -15,6 +15,7 @@ Related sources:
 
 Out of scope for this phase:
 - `docs/data-structure-ref/`
+- First-class recipe or template product surfaces; these remain possible scaffolding conveniences, not core platform artifacts.
 
 ## Status Legend
 - `Planned`: agreed but not started
@@ -29,7 +30,7 @@ Out of scope for this phase:
 | 1 | Rename and Restructure Foundation | Done | `packages/contracts` removed, `schema/ports/core` shape adopted, imports updated, architecture check + typecheck pass |
 | 2 | Core Persistence (Postgres canonical) | In Progress | `@neutrino/core` repositories + migrations in place, production-managed Postgres provisioning + secret wiring + migration promotion flow validated |
 | 3 | Infrastructure Ports and Adapters | In Progress | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
-| 4 | Catalog, Bindings, and Manifests | In Progress | manifests validate, resources register, bindings resolve runtime plan |
+| 4 | Manifest Registry, Catalog, Bindings, and Manifests | In Progress | scoped manifest registry exists, manifests validate, resources register, bindings resolve runtime plan |
 | 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
 | 6 | Dev Agent Runtime | In Progress | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
 | 7 | Service Donation and Control-Plane UI | Planned | cross-app capability donation/authorization validated and surfaced in UI |
@@ -123,21 +124,46 @@ Current notes:
   - explicit placeholder tests confirming `QdrantAdapter` still throws `Not implemented.`.
 - Remaining closure work: run and capture live pgvector validation against staging self-hosted Postgres, then either implement or explicitly defer the Qdrant adapter for this milestone.
 
-### Phase 4: Catalog, Bindings, and Manifests
+### Phase 4: Manifest Registry, Catalog, Bindings, and Manifests
 Status: `In Progress`
 
 Target outcomes:
 - Manifest set under `@neutrino/schema`:
   - `pico.app`, `pico.service`, `pico.agent`, `pico.skill`, `pico.harness`, `pico.capability`, `pico.conversation`, `pico.eval`, `pico.binding`, `pico.policy`
+- Service manifest semantics:
+  - package-style service identity in the shape `@scope/service-name@version`
+  - `@pico/*` reserved for first-party platform services and defaults
+  - workspace/company namespaces such as `@acme/*` for company-owned shared services
+  - image, entrypoint, port, healthcheck, compose, and sidecar fields remain out of the core service manifest until a concrete runtime need exists
+- App manifest semantics:
+  - apps publish app-defined objects, actions, views, handlers, and visibility rules
+  - actions can use local handlers or versioned reusable services
+  - visibility controls whether apps, actions, objects, views, and services are internal, public, or explicitly exposed to selected workspaces, orgs, groups, or actors
+- Simple access graph in place:
+  - `actor`, `group`, `identity`, and `grant` are the first-cut schema primitives
+  - org/team/customer structure is modeled through groups plus grants until a concrete use case proves a separate primitive is needed
+  - SSO links to actors through identity records
+- Scoped manifest registry/catalog in place:
+  - every app, object, action, view, service, agent, skill, harness, conversation, eval, binding, and policy manifest can be registered, versioned, listed, resolved, and audited by workspace/org/group/project/app installation/actor context
+  - Dev Agent manifests become seeded registry records, not a permanent singleton special case
 - Catalog services in place:
   - `ServiceCatalog`, `CapabilityCatalog`, `OAuthClientCatalog`
 - `BindingResolver` produces runtime-resolved execution selections.
 
 Validation:
 - Dev agent app manifest validates, registers, and resolves through bindings.
+- Service manifest validation rejects missing version and invalid package-style service names.
+- At least two agent manifests can be registered under separate project scopes and resolved without ID/scope leakage.
+- Runtime selection can resolve the agent/harness/binding from request scope instead of hardcoded Dev Agent constants.
 
 Current notes:
-- In-memory catalog adapters are renamed in working tree; final behavior validation remains open.
+- Dev Agent manifest-set validation coverage now includes app/service/skill/harness/agent/binding manifests.
+- Service registration and binding resolution tests for the Dev Agent local path are in place in `@neutrino/core`.
+- `ManifestRegistry` port and in-memory implementation are in place for scoped manifest registration, listing, lifecycle-aware resolution, and latest-version selection.
+- Dev Agent bootstrap seeds manifests into the registry and resolves app/agent/harness/binding data from registry state before runtime execution.
+- Two project-scoped agent manifests with overlapping IDs resolve independently in tests.
+- Read-only manifest control-plane readback (`/v1/control-plane/manifests`) returns seeded registry records with `kind` and `resourceId` filters.
+- Admin console includes a read-only Manifest Registry panel showing manifest kind, resource ID, version, lifecycle state, and scope metadata.
 - The first service-donation vertical is the Dev Agent path: Dev Agent app manifest -> service/capability -> local bindings -> runtime resolution.
 
 ### Phase 5: Auth and Data Platform
@@ -164,15 +190,28 @@ Status: `In Progress`
 Target outcomes:
 - Own runtime (no Vercel AI SDK).
 - Path implemented:
-  `Tenant -> Project -> App manifest -> Agent service -> Skill -> Harness service -> LLM binding -> Conversation runtime -> Run record -> Trace -> Eval result`
+  `Workspace -> Project -> App manifest -> Object/Action -> Service -> Skill -> Binding -> Conversation runtime -> Execution record -> Trace -> Eval result`
 - Harness governs context, permissions, policy, capabilities, limits, memory, tracing, eval hooks.
+- Runtime enforces the hard execution rules:
+  - no execution without actor
+  - no record without scope
+  - no retrieval without policy
+  - no service without version
+  - no binding without snapshot
+  - no output without schema
 
 Validation:
 - Admin/debug route executes full path and persists run/trace/usage/memory/eval outputs.
+- Persisted runtime records reference action ID where applicable, service package name/version, actor, scope, policy snapshot, binding snapshot, schema versions, and dependency versions where applicable.
 
 Current notes:
-- The first implementation slice should route the existing debug chat through the Dev Agent runtime instead of introducing a separate Agent Builder surface.
-- The runtime proof should preserve the current chat stream contract while adding run, trace, and usage persistence behind core repository ports.
+- `/v1/chat` runs through the Dev Agent runtime and preserves the existing SSE chat contract.
+- `/v1/chat` accepts optional runtime scope selection (`workspaceId`, `projectId`, `agentId`) while preserving Dev Agent defaults when omitted.
+- Invalid runtime selection returns an SSE `error` event without changing the stream contract.
+- Authorized control-plane runtime readback (`/v1/control-plane/runtime/runs`) returns run + trace + usage records for the Dev Agent scope.
+- Admin console runtime panel surfaces run status, model, started/completed timestamps, trace count, output/error preview, and explicit refresh behavior.
+- Browser verification on 2026-05-20 confirmed `/login` auth, `/admin/debug/chat` prompt execution, and `/admin` runtime readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
+- Browser verification on 2026-05-21 confirmed the Manifest Registry panel, `/admin/debug/chat` prompt execution, and `/admin` runtime refresh/readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 
 ### Phase 7: Service Donation and Control-Plane UI
 Status: `Planned`
@@ -194,12 +233,11 @@ Validation:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Implement a Phase 4 binding resolution test that drives the Dev Agent manifest through service registration and local binding resolution.
-2. Route `/v1/chat` through the Dev Agent runtime so chat requests persist run, trace, and usage records while preserving the web SSE contract.
-3. Add an authorized admin/control-plane read path for recent Dev Agent run, trace, and usage records.
-4. Surface enough runtime lifecycle state in the admin/debug UI to verify request -> run -> trace -> usage.
-5. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
-6. Re-run local validation gates and update this roadmap when Phase 4 or Phase 6 exit criteria are satisfied.
+1. Define the Postgres-backed manifest registry migration and repository implementation for durable multi-agent manifests.
+2. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
+3. Add durable run/trace/usage repository coverage for failed and successful runtime executions.
+4. Extend scoped runtime selection beyond the seeded Dev Agent path once durable registry records exist.
+5. Plan the first write/admin workflow for manifest registration after the durable registry storage contract is validated.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

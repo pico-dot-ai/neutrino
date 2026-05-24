@@ -1,7 +1,7 @@
 export type ScopeRef = {
-  tenantId: string;
+  workspaceId: string;
   orgId?: string;
-  teamId?: string;
+  groupId?: string;
   projectId?: string;
   appInstallationId?: string;
 };
@@ -25,8 +25,46 @@ export type ManifestBase = {
   name?: string;
 };
 
+export type VisibilityAccess = "private" | "internal" | "customers" | "public" | "inherited";
+
+export type VisibilityRule = {
+  access: VisibilityAccess;
+  customers?: string[];
+  groups?: string[];
+};
+
+export type AppViewDefinition = {
+  resource: string;
+  visibility?: VisibilityRule;
+};
+
+export type AppObjectDefinition = {
+  schema: string;
+  view?: string;
+  views?: Record<string, string>;
+  visibility?: VisibilityRule;
+};
+
+export type AppActionDefinition = {
+  input?: string;
+  output?: string;
+  mutates?: string[];
+  handler?: string;
+  uses?: string;
+  visibility?: VisibilityRule;
+};
+
 export type PicoAppManifest = ManifestBase & {
   kind: "pico.app";
+  packageName?: string;
+  publisher?: {
+    workspaceId?: string;
+    orgId?: string;
+  };
+  visibility?: VisibilityRule;
+  objects?: Record<string, AppObjectDefinition>;
+  actions?: Record<string, AppActionDefinition>;
+  views?: Record<string, AppViewDefinition>;
   requires?: {
     services?: Record<string, string>;
   };
@@ -44,8 +82,35 @@ export type PicoAppManifest = ManifestBase & {
 
 export type PicoServiceManifest = ManifestBase & {
   kind: "pico.service";
-  contract: string;
-  ownerAppId: string;
+  packageName?: string;
+  summary?: string;
+  schema?: {
+    input?: string;
+    output?: string;
+  };
+  policy?: {
+    visibility?: VisibilityAccess;
+    requires?: string[];
+    audit?: "required" | "optional";
+  };
+  uses?: {
+    tools?: string[];
+  };
+  follows?: {
+    skills?: string[];
+  };
+  records?: {
+    emit?: string[];
+  };
+  "interface"?: {
+    functions?: Array<{
+      name: string;
+      input?: string;
+      output?: string;
+    }>;
+  };
+  contract?: string;
+  ownerAppId?: string;
   capabilities?: string[];
 };
 
@@ -156,11 +221,58 @@ export type PicoBindingManifest = ManifestBase & {
 export type PicoPolicyManifest = ManifestBase & {
   kind: "pico.policy";
   rules: Array<{
-    subject: string;
+    actor: string;
     action: string;
     resource: string;
     effect: "allow" | "deny";
   }>;
+};
+
+export type ActorKind = "user" | "app" | "service" | "system";
+
+export type ActorRecord = {
+  actorId: string;
+  workspaceId: string;
+  kind: ActorKind;
+  handle: string;
+  displayName: string;
+  email?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GroupRecord = {
+  groupId: string;
+  workspaceId: string;
+  slug: string;
+  displayName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IdentityKind = "user" | "group";
+
+export type IdentityRecord = {
+  identityId: string;
+  workspaceId: string;
+  provider: string;
+  externalId: string;
+  kind: IdentityKind;
+  mapsToType: "actor" | "group";
+  mapsToId: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GrantRecord = {
+  grantId: string;
+  workspaceId: string;
+  granteeType: "actor" | "group";
+  granteeId: string;
+  relation: string;
+  resourceType: string;
+  resourceId: string;
+  createdAt: string;
 };
 
 export type PlatformManifest =
@@ -175,10 +287,31 @@ export type PlatformManifest =
   | PicoBindingManifest
   | PicoPolicyManifest;
 
+export type ManifestLifecycleState = "draft" | "active" | "deprecated" | "disabled";
+
+export type ManifestRecord = {
+  manifestId: string;
+  resourceId: string;
+  kind: ResourceKind;
+  scope: ScopeRef;
+  version: number;
+  lifecycleState: ManifestLifecycleState;
+  manifest: PlatformManifest;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RunRecord = {
   runId: string;
   scope: ScopeRef;
   appId: string;
+  actionId?: string;
+  actorId?: string;
+  servicePackageName?: string;
+  serviceVersion?: number;
+  policySnapshotId?: string;
+  bindingSnapshotId?: string;
+  schemaVersions?: Record<string, string>;
   agentId: string;
   harnessId: string;
   conversationId: string;

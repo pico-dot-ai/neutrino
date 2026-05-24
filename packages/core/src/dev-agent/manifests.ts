@@ -11,7 +11,43 @@ export const devAgentAppManifest: PicoAppManifest = {
   kind: "pico.app",
   version: 1,
   id: "pico.dev-agent",
+  packageName: "@pico/dev-agent",
   name: "Dev agent",
+  publisher: {
+    orgId: "pico"
+  },
+  visibility: {
+    access: "internal"
+  },
+  objects: {
+    conversation: {
+      schema: "./schemas/conversation.json",
+      view: "ui://pico/dev-agent/conversation",
+      visibility: {
+        access: "inherited"
+      }
+    }
+  },
+  actions: {
+    generate_reply: {
+      input: "./schemas/generate-reply.input.json",
+      output: "./schemas/generate-reply.output.json",
+      mutates: ["conversation"],
+      handler: "./actions/generate-reply.ts",
+      uses: "@pico/dev-agent-service@1.0.0",
+      visibility: {
+        access: "inherited"
+      }
+    }
+  },
+  views: {
+    conversation: {
+      resource: "ui://pico/dev-agent/conversation",
+      visibility: {
+        access: "inherited"
+      }
+    }
+  },
   requires: {
     services: {
       languageModel: "LanguageModelProvider",
@@ -26,7 +62,36 @@ export const devAgentServiceManifest: PicoServiceManifest = {
   kind: "pico.service",
   version: 1,
   id: "pico.service.dev-agent",
+  packageName: "@pico/dev-agent-service",
   name: "Dev agent service",
+  summary: "Generates repo-grounded Dev Agent responses for a project conversation.",
+  schema: {
+    input: "./schemas/generate-reply.input.json",
+    output: "./schemas/generate-reply.output.json"
+  },
+  policy: {
+    visibility: "internal",
+    requires: ["conversation:read", "conversation:write"],
+    audit: "required"
+  },
+  uses: {
+    tools: ["@pico/model-provider"]
+  },
+  follows: {
+    skills: ["@pico/repo-context"]
+  },
+  records: {
+    emit: ["execution.started", "model.called", "execution.completed"]
+  },
+  "interface": {
+    functions: [
+      {
+        name: "generate_reply",
+        input: "./schemas/generate-reply.input.json",
+        output: "./schemas/generate-reply.output.json"
+      }
+    ]
+  },
   contract: "DevAgentService",
   ownerAppId: devAgentAppManifest.id,
   capabilities: ["pico.capability.dev-agent.generate"]

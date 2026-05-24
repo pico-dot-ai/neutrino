@@ -5,12 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Input, Separator } from "@neutrino/ui";
 
-type PrincipalPayload = {
-  principal: {
+type ActorPayload = {
+  actor: {
     username: string;
     email: string;
-    roles: string[];
-    orgMemberships: string[];
+    groups: string[];
   };
 };
 
@@ -53,6 +52,34 @@ type RuntimeRunRecord = {
   }>;
 };
 
+type UsageRecord = {
+  usageId: string;
+  runId: string;
+  provider: string;
+  model: string;
+  createdAt: string;
+};
+
+type RuntimeListPayload = {
+  runs: RuntimeRunRecord[];
+  usage: UsageRecord[];
+};
+
+type ManifestRecord = {
+  manifestId: string;
+  resourceId: string;
+  kind: string;
+  scope: {
+    workspaceId: string;
+    orgId?: string;
+    groupId?: string;
+    projectId?: string;
+    appInstallationId?: string;
+  };
+  version: number;
+  lifecycleState: string;
+};
+
 async function requestJson<T>(url: string, init?: RequestInit) {
   const response = await fetch(url, init);
   const payload = (await response.json().catch(() => null)) as
@@ -68,11 +95,15 @@ async function requestJson<T>(url: string, init?: RequestInit) {
 
 export function DeveloperConsole() {
   const router = useRouter();
-  const [principal, setPrincipal] = React.useState<PrincipalPayload["principal"] | null>(null);
+  const [actor, setActor] = React.useState<ActorPayload["actor"] | null>(null);
   const [oauthApps, setOauthApps] = React.useState<OAuthAppRecord[]>([]);
   const [capabilities, setCapabilities] = React.useState<CapabilityRecord[]>([]);
   const [runtimeRuns, setRuntimeRuns] = React.useState<RuntimeRunRecord[]>([]);
+  const [runtimeUsage, setRuntimeUsage] = React.useState<UsageRecord[]>([]);
+  const [manifestRecords, setManifestRecords] = React.useState<ManifestRecord[]>([]);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = React.useState<string | null>(null);
   const [displayName, setDisplayName] = React.useState("Sample Internal App");
   const [appType, setAppType] = React.useState<OAuthAppRecord["appType"]>("consumer");
   const [capabilityName, setCapabilityName] = React.useState("decision-tracker");
@@ -80,21 +111,30 @@ export function DeveloperConsole() {
   const [ownerAppId, setOwnerPicoAppId] = React.useState("");
 
   const refresh = React.useCallback(async () => {
-    const [me, appList, capabilityList, runtimeList] = await Promise.all([
-      requestJson<PrincipalPayload>("/api/auth/me"),
-      requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
-      requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities"),
-      requestJson<{ runs: RuntimeRunRecord[] }>("/api/platform/runtime/runs")
-    ]);
+    setIsRefreshing(true);
+    try {
+      const [me, appList, capabilityList, runtimeList, manifestList] = await Promise.all([
+        requestJson<ActorPayload>("/api/auth/me"),
+        requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
+        requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities"),
+        requestJson<RuntimeListPayload>("/api/platform/runtime/runs"),
+        requestJson<{ manifests: ManifestRecord[] }>("/api/platform/manifests")
+      ]);
 
-    setPrincipal(me.principal);
-    setOauthApps(appList.apps);
-    setCapabilities(capabilityList.capabilities);
-    setRuntimeRuns(runtimeList.runs);
+      setActor(me.actor);
+      setOauthApps(appList.apps);
+      setCapabilities(capabilityList.capabilities);
+      setRuntimeRuns(runtimeList.runs);
+      setRuntimeUsage(runtimeList.usage);
+      setManifestRecords(manifestList.manifests ?? []);
+      setLastRefreshedAt(new Date().toISOString());
 
-    setOwnerPicoAppId((currentOwnerPicoAppId) =>
-      currentOwnerPicoAppId || appList.apps[0]?.app_id || ""
-    );
+      setOwnerPicoAppId((currentOwnerPicoAppId) =>
+        currentOwnerPicoAppId || appList.apps[0]?.app_id || ""
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
   }, []);
 
   React.useEffect(() => {
@@ -102,6 +142,22 @@ export function DeveloperConsole() {
       setMessage(error instanceof Error ? error.message : "Unable to load console.");
     });
   }, [refresh]);
+
+  function modelForRun(runId: string) {
+    return runtimeUsage.find((record) => record.runId === runId)?.model ?? "unknown";
+  }
+
+  function scopeLabel(scope: ManifestRecord["scope"]) {
+    return [
+      `workspace:${scope.workspaceId}`,
+      scope.orgId ? `org:${scope.orgId}` : null,
+      scope.groupId ? `group:${scope.groupId}` : null,
+      scope.projectId ? `project:${scope.projectId}` : null,
+      scope.appInstallationId ? `installation:${scope.appInstallationId}` : null
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
 
   async function registerOAuthApp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -191,7 +247,7 @@ export function DeveloperConsole() {
           </div>
 
           <div className="mt-4 text-sm text-muted-foreground">
-            Signed in as <span className="font-medium text-foreground">{principal?.email ?? "..."}</span>
+            Signed in as <span className="font-medium text-foreground">{actor?.email ?? "..."}</span>
           </div>
         </header>
 
@@ -244,6 +300,29 @@ export function DeveloperConsole() {
         </section>
 
         <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
+          <h2 className="text-lg font-semibold tracking-tight">Manifest Registry</h2>
+          <Separator className="my-4" />
+          <div className="space-y-3">
+            {manifestRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No manifests registered yet.</p>
+            ) : (
+              manifestRecords.slice(0, 12).map((record) => (
+                <article
+                  className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm"
+                  key={record.manifestId}
+                >
+                  <p className="font-medium">{record.kind}</p>
+                  <p className="text-muted-foreground">
+                    id: {record.resourceId} · version: {record.version} · lifecycle: {record.lifecycleState}
+                  </p>
+                  <p className="text-muted-foreground">{scopeLabel(record.scope)}</p>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
           <h2 className="text-lg font-semibold tracking-tight">OAuth Apps</h2>
           <Separator className="my-4" />
           <div className="space-y-3">
@@ -287,7 +366,24 @@ export function DeveloperConsole() {
         </section>
 
         <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">Dev Agent Runtime</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-tight">Dev Agent Runtime</h2>
+            <div className="flex items-center gap-2">
+              {lastRefreshedAt ? (
+                <p className="text-xs text-muted-foreground">
+                  refreshed: {new Date(lastRefreshedAt).toLocaleString()}
+                </p>
+              ) : null}
+              <Button
+                onClick={() => void refresh()}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                {isRefreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+          </div>
           <Separator className="my-4" />
           <div className="space-y-3">
             {runtimeRuns.length === 0 ? (
@@ -303,7 +399,10 @@ export function DeveloperConsole() {
                     agent: {run.agentId} · harness: {run.harnessId}
                   </p>
                   <p className="text-muted-foreground">
-                    traces: {traces.length} · started: {new Date(run.startedAt).toLocaleString()}
+                    model: {modelForRun(run.runId)} · traces: {traces.length}
+                  </p>
+                  <p className="text-muted-foreground">
+                    started: {new Date(run.startedAt).toLocaleString()} · completed: {run.completedAt ? new Date(run.completedAt).toLocaleString() : "running"}
                   </p>
                   {run.output ? (
                     <p className="mt-2 line-clamp-2 text-foreground">{run.output}</p>

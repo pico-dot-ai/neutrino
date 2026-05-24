@@ -103,8 +103,7 @@ Production web deployments must define `APP_IDENTITY_USERS_JSON`; the developmen
     "username": "admin",
     "password": "replace-with-a-strong-password",
     "email": "admin@pico.ai",
-    "orgMemberships": ["picoai"],
-    "roles": ["app_admin", "org_admin"]
+    "groups": ["picoai", "app_admin", "org_admin"]
   }
 ]
 ```

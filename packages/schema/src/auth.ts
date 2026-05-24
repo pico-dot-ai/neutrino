@@ -6,12 +6,11 @@ export type IdentityProviderCapabilities = {
   supportsSaml: boolean;
 };
 
-export type IdentityPrincipal = {
-  subject: string;
+export type AuthenticatedActor = {
+  actorId: string;
   username: string;
   email: string;
-  orgMemberships: string[];
-  roles: string[];
+  groups: string[];
 };
 
 export type PasswordAuthRequest = {
@@ -26,7 +25,7 @@ export type TokenValidationRequest = {
 
 export type AuthSession = {
   sessionId: string;
-  principal: IdentityPrincipal;
+  actor: AuthenticatedActor;
   issuedAt: string;
   expiresAt: string;
 };

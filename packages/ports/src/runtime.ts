@@ -1,7 +1,14 @@
 import type {
+  ActorRecord,
   ArtifactRecord,
   BindingRecord,
+  GrantRecord,
+  GroupRecord,
+  IdentityRecord,
+  ManifestLifecycleState,
+  ManifestRecord,
   MemoryRecord,
+  PlatformManifest,
   PicoBindingManifest,
   PicoServiceManifest,
   RunRecord,
@@ -12,6 +19,23 @@ import type {
   VectorMatch,
   VectorQuery
 } from "@neutrino/schema";
+
+export type GrantListFilter = {
+  workspaceId?: string;
+  granteeType?: "actor" | "group";
+  granteeId?: string;
+  relation?: string;
+  resourceType?: string;
+  resourceId?: string;
+};
+
+export interface AccessGraphRepository {
+  upsertActor(record: ActorRecord): Promise<ActorRecord>;
+  upsertGroup(record: GroupRecord): Promise<GroupRecord>;
+  upsertIdentity(record: IdentityRecord): Promise<IdentityRecord>;
+  addGrant(record: GrantRecord): Promise<GrantRecord>;
+  listGrants(filter?: GrantListFilter): Promise<GrantRecord[]>;
+}
 
 export interface ServiceCatalog {
   registerService(manifest: PicoServiceManifest): Promise<ServiceRecord>;
@@ -34,6 +58,27 @@ export interface BindingResolver {
     environment: string;
     requirement: string;
   }): Promise<ResolvedBinding | null>;
+}
+
+export interface ManifestRegistry {
+  registerManifest(options: {
+    scope: ScopeRef;
+    manifest: PlatformManifest;
+    lifecycleState?: ManifestLifecycleState;
+  }): Promise<ManifestRecord>;
+  listManifests(options?: {
+    scope?: ScopeRef;
+    kind?: PlatformManifest["kind"];
+    resourceId?: string;
+    lifecycleStates?: ManifestLifecycleState[];
+  }): Promise<ManifestRecord[]>;
+  resolveManifest(options: {
+    scope: ScopeRef;
+    kind: PlatformManifest["kind"];
+    resourceId: string;
+    version?: number;
+    lifecycleStates?: ManifestLifecycleState[];
+  }): Promise<ManifestRecord | null>;
 }
 
 export interface RunRepository {

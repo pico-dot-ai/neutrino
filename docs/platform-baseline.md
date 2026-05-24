@@ -16,11 +16,11 @@ This document tracks the Neutrino platform baseline and the exact `pico-app-cont
 Neutrino is moving toward a composable AI service platform with a modular-monolith implementation posture.
 
 Baseline principles:
-- Services are reusable platform units.
-- Apps are user-facing surfaces and control planes over services.
+- Apps are developer-facing product packages that expose objects, actions, views, and visibility.
+- Services are reusable implementation units behind app actions.
 - Builder UIs must operate on the same file-defined resources that can be edited directly.
 - Service semantics come before physical service extraction.
-- Tenant safety, auth, storage, artifacts, memory, observability, and policy are platform core concerns.
+- Workspace safety, auth, storage, artifacts, memory, observability, and policy are platform core concerns.
 
 ## First-Run Platform Core
 The first serious implementation plan should include:
@@ -33,7 +33,7 @@ The first serious implementation plan should include:
 - pgvector installed with Postgres for the initial vector/retrieval path
 - ObjectStorage and artifact repository port with local development backing and future production object-store backing
 - Core memory records that are explicit, scoped, auditable, and stored as canonical records before vector indexing
-- Catalog and resolver concepts for file-defined apps, services, agents, skills, harnesses, conversations, evals, bindings, policies, runs, and traces
+- Catalog and resolver concepts for file-defined apps, objects, actions, views, services, agents, skills, harnesses, conversations, evals, bindings, policies, executions, records, and traces
 
 ## Existing Local Platform Primitives
 Current repo work already includes or is moving toward:
@@ -47,8 +47,8 @@ Current repo work already includes or is moving toward:
 ## First Vertical Milestone
 The first implementation plan should prove:
 
-`Tenant -> Project -> App manifest -> Agent service -> Skill -> Harness service -> LLM binding -> Conversation runtime -> Run record -> Trace -> Eval result`
+`Workspace -> Project -> App manifest -> Object/Action -> Service -> Skill -> Binding -> Conversation runtime -> Execution record -> Trace -> Eval result`
 
-The milestone should also prove service donation: one app exposes a reusable service or capability that another app or agent consumes through the catalog.
+The milestone should also prove service reuse: one app exposes an action that can use a reusable service package from the catalog when visibility and grants allow it.
 
 Do not include generalized task/calendar item modeling from `docs/data-structure-ref/` in this milestone.

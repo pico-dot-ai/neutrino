@@ -168,6 +168,26 @@ variable "api_image_name" {
   default = "neutrino-api"
 }
 
+variable "artifact_bucket_name" {
+  type    = string
+  default = null
+}
+
+variable "object_storage_provider" {
+  type    = string
+  default = "gcs"
+
+  validation {
+    condition     = contains(["local", "gcs"], var.object_storage_provider)
+    error_message = "object_storage_provider must be either \"local\" or \"gcs\"."
+  }
+}
+
+variable "object_storage_gcs_prefix" {
+  type    = string
+  default = "artifacts"
+}
+
 variable "enable_self_managed_postgres" {
   type    = bool
   default = false

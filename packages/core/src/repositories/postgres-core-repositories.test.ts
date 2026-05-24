@@ -27,6 +27,19 @@ describePostgres("Postgres core repositories", () => {
       connectionString: connectionString as string
     });
     const scope = uniqueScope();
+    const suffix = scope.workspaceId.replace("workspace_", "");
+    const actorId = `actor_alice_${suffix}`;
+    const groupId = `group_support_${suffix}`;
+    const identityId = `identity_okta_alice_${suffix}`;
+    const grantId = `grant_support_app_${suffix}`;
+    const runId = `run_postgres_${suffix}`;
+    const conversationId = `conversation_${suffix}`;
+    const traceId = `trace_postgres_${suffix}`;
+    const usageId = `usage_postgres_${suffix}`;
+    const memoryId = `memory_postgres_${suffix}`;
+    const artifactId = `artifact_postgres_${suffix}`;
+    const failedRunId = `run_postgres_failed_${suffix}`;
+    const failedTraceId = `trace_postgres_failed_${suffix}`;
     const timestamp = "2026-05-24T00:00:00.000Z";
 
     try {
@@ -63,7 +76,7 @@ describePostgres("Postgres core repositories", () => {
       });
 
       await core.accessGraphRepository.upsertActor({
-        actorId: "actor_alice",
+        actorId,
         workspaceId: scope.workspaceId,
         kind: "user",
         handle: "alice",
@@ -73,7 +86,7 @@ describePostgres("Postgres core repositories", () => {
         updatedAt: timestamp
       });
       await core.accessGraphRepository.upsertGroup({
-        groupId: "group_support",
+        groupId,
         workspaceId: scope.workspaceId,
         slug: "support",
         displayName: "Support",
@@ -81,21 +94,21 @@ describePostgres("Postgres core repositories", () => {
         updatedAt: timestamp
       });
       await core.accessGraphRepository.upsertIdentity({
-        identityId: "identity_okta_alice",
+        identityId,
         workspaceId: scope.workspaceId,
         provider: "okta",
         externalId: "00u123",
         kind: "user",
         mapsToType: "actor",
-        mapsToId: "actor_alice",
+        mapsToId: actorId,
         createdAt: timestamp,
         updatedAt: timestamp
       });
       await core.accessGraphRepository.addGrant({
-        grantId: "grant_support_app",
+        grantId,
         workspaceId: scope.workspaceId,
         granteeType: "group",
-        granteeId: "group_support",
+        granteeId: groupId,
         relation: "can_use",
         resourceType: "app",
         resourceId: "@acme/support-desk",
@@ -105,7 +118,7 @@ describePostgres("Postgres core repositories", () => {
         core.accessGraphRepository.listGrants({
           workspaceId: scope.workspaceId,
           granteeType: "group",
-          granteeId: "group_support"
+          granteeId: groupId
         })
       ).resolves.toMatchObject([
         {
@@ -128,62 +141,62 @@ describePostgres("Postgres core repositories", () => {
       });
 
       await core.runRepository.createRun({
-        runId: "run_postgres",
+        runId,
         scope,
         appId: devAgentAppManifest.id,
         actionId: "generate_reply",
-        actorId: "actor_alice",
+        actorId,
         servicePackageName: devAgentServiceManifest.packageName,
         serviceVersion: devAgentServiceManifest.version,
         schemaVersions: {},
         agentId: devAgentManifest.id,
         harnessId: devAgentHarnessManifest.id,
-        conversationId: "conversation_1",
+        conversationId,
         status: "running",
         startedAt: timestamp
       });
       await core.traceRepository.appendTrace({
-        traceId: "trace_postgres",
-        runId: "run_postgres",
+        traceId,
+        runId,
         eventType: "runtime.started",
         message: "Started.",
         createdAt: timestamp
       });
       await core.runRepository.updateRun({
-        runId: "run_postgres",
+        runId,
         scope,
         appId: devAgentAppManifest.id,
         actionId: "generate_reply",
-        actorId: "actor_alice",
+        actorId,
         servicePackageName: devAgentServiceManifest.packageName,
         serviceVersion: devAgentServiceManifest.version,
         schemaVersions: {},
         agentId: devAgentManifest.id,
         harnessId: devAgentHarnessManifest.id,
-        conversationId: "conversation_1",
+        conversationId,
         status: "succeeded",
         output: "ok",
         startedAt: timestamp,
         completedAt: "2026-05-24T00:00:01.000Z"
       });
       await core.usageLedger.recordUsage({
-        usageId: "usage_postgres",
+        usageId,
         scope,
-        runId: "run_postgres",
+        runId,
         provider: "language-model",
         model: "gpt-test",
         createdAt: timestamp
       });
       await core.memoryRepository.writeMemory({
-        memoryId: "memory_postgres",
+        memoryId,
         scope,
         kind: "summary",
         content: "Remember this.",
-        sourceRunId: "run_postgres",
+        sourceRunId: runId,
         createdAt: timestamp
       });
       await core.artifactRepository.createArtifact({
-        artifactId: "artifact_postgres",
+        artifactId,
         scope,
         objectUri: "object://artifact",
         contentType: "text/plain",
@@ -191,34 +204,107 @@ describePostgres("Postgres core repositories", () => {
         checksum: "checksum",
         createdAt: timestamp
       });
+      await core.runRepository.createRun({
+        runId: failedRunId,
+        scope,
+        appId: devAgentAppManifest.id,
+        actionId: "generate_reply",
+        actorId,
+        servicePackageName: devAgentServiceManifest.packageName,
+        serviceVersion: devAgentServiceManifest.version,
+        schemaVersions: {
+          input: "./schemas/generate-reply.input.json",
+          output: "./schemas/generate-reply.output.json"
+        },
+        agentId: devAgentManifest.id,
+        harnessId: devAgentHarnessManifest.id,
+        conversationId,
+        status: "running",
+        startedAt: "2026-05-24T00:00:02.000Z"
+      });
+      await core.runRepository.updateRun({
+        runId: failedRunId,
+        scope,
+        appId: devAgentAppManifest.id,
+        actionId: "generate_reply",
+        actorId,
+        servicePackageName: devAgentServiceManifest.packageName,
+        serviceVersion: devAgentServiceManifest.version,
+        bindingSnapshotId: devAgentLocalBindingManifest.id,
+        schemaVersions: {
+          input: "./schemas/generate-reply.input.json",
+          output: "./schemas/generate-reply.output.json"
+        },
+        agentId: devAgentManifest.id,
+        harnessId: devAgentHarnessManifest.id,
+        conversationId,
+        status: "failed",
+        error: "Model provider failed.",
+        startedAt: "2026-05-24T00:00:02.000Z",
+        completedAt: "2026-05-24T00:00:03.000Z"
+      });
+      await core.traceRepository.appendTrace({
+        traceId: failedTraceId,
+        runId: failedRunId,
+        eventType: "runtime.failed",
+        message: "Model provider failed.",
+        createdAt: timestamp
+      });
 
       await expect(core.runRepository.listRuns(scope)).resolves.toMatchObject([
         {
-          runId: "run_postgres",
+          runId: failedRunId,
+          status: "failed",
+          actorId,
+          actionId: "generate_reply",
+          servicePackageName: devAgentServiceManifest.packageName,
+          serviceVersion: devAgentServiceManifest.version,
+          bindingSnapshotId: devAgentLocalBindingManifest.id,
+          schemaVersions: {
+            input: "./schemas/generate-reply.input.json",
+            output: "./schemas/generate-reply.output.json"
+          },
+          error: "Model provider failed."
+        },
+        {
+          runId,
           status: "succeeded",
-          actorId: "actor_alice",
+          actorId,
           actionId: "generate_reply"
         }
       ]);
-      await expect(core.traceRepository.listTraces("run_postgres")).resolves.toHaveLength(1);
+      await expect(core.traceRepository.listTraces(runId)).resolves.toHaveLength(1);
+      await expect(core.traceRepository.listTraces(failedRunId)).resolves.toMatchObject([
+        {
+          traceId: failedTraceId,
+          eventType: "runtime.failed",
+          message: "Model provider failed."
+        }
+      ]);
       await expect(core.usageLedger.listUsage(scope)).resolves.toMatchObject([
         {
-          usageId: "usage_postgres",
+          usageId,
           model: "gpt-test"
         }
       ]);
       await expect(core.memoryRepository.listMemory(scope)).resolves.toMatchObject([
         {
-          memoryId: "memory_postgres",
+          memoryId,
           content: "Remember this."
         }
       ]);
-      await expect(core.artifactRepository.getArtifact("artifact_postgres")).resolves.toMatchObject({
-        artifactId: "artifact_postgres",
+      await expect(core.artifactRepository.getArtifact(artifactId)).resolves.toMatchObject({
+        artifactId,
         objectUri: "object://artifact"
       });
+      await expect(core.artifactRepository.listArtifacts(scope)).resolves.toMatchObject([
+        {
+          artifactId,
+          objectUri: "object://artifact"
+        }
+      ]);
     } finally {
       await core.close();
     }
-  });
+  }, 30_000);
 });

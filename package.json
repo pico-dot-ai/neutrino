@@ -16,6 +16,8 @@
     "dev:api": "npm run dev --workspace @neutrino/api",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:core:postgres": "set -a; . ./.env; set +a; CORE_DATABASE_URL=\"$CORE_TEST_DATABASE_URL\" npm run migrate --workspace @neutrino/core && npm run test --workspace @neutrino/core -- src/repositories/postgres-core-repositories.test.ts",
+    "phase2:drill": "bash scripts/phase2-core-persistence-drill.sh",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "architecture:render": "node scripts/render-architecture-doc.mjs",
     "architecture:check": "node scripts/check-architecture-drift.mjs",

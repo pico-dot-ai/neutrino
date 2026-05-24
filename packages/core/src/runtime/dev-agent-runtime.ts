@@ -8,6 +8,8 @@ export type DevAgentRuntimeRequest = {
   actorId?: string;
   servicePackageName?: string;
   serviceVersion?: number;
+  bindingSnapshotId?: string;
+  policySnapshotId?: string;
   schemaVersions?: Record<string, string>;
   agentId: string;
   harnessId: string;
@@ -50,6 +52,8 @@ export class DevAgentRuntime {
       actorId: request.actorId ?? "actor_system",
       servicePackageName: request.servicePackageName ?? "@pico/dev-agent-service",
       serviceVersion: request.serviceVersion ?? 1,
+      bindingSnapshotId: request.bindingSnapshotId,
+      policySnapshotId: request.policySnapshotId,
       schemaVersions: request.schemaVersions ?? {},
       agentId: request.agentId,
       harnessId: request.harnessId,
@@ -124,6 +128,8 @@ export class DevAgentRuntime {
       actorId: request.actorId ?? "actor_system",
       servicePackageName: request.servicePackageName ?? "@pico/dev-agent-service",
       serviceVersion: request.serviceVersion ?? 1,
+      bindingSnapshotId: request.bindingSnapshotId,
+      policySnapshotId: request.policySnapshotId,
       schemaVersions: request.schemaVersions ?? {},
       agentId: request.agentId,
       harnessId: request.harnessId,

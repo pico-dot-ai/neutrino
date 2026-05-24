@@ -1,6 +1,6 @@
 # Ops Known Issues
 
-Last updated: 2026-05-18
+Last updated: 2026-05-24
 
 ## Purpose
 This file is the durable incident and remediation ledger for recurring deployment and runtime issues.
@@ -62,3 +62,15 @@ When adding a new issue, use:
 - Fix: Set `APP_IDENTITY_USERS_JSON` in Vercel production with at least one `app_admin` user. Set `APP_SESSION_SECRET` as a strong random value.
 - Prevention: Treat Vercel env vars as deployment config managed outside git; validate required auth vars before promoting to production.
 - Verification: `/login` can authenticate configured admin user in production.
+
+## ISSUE-005: Migration job applies zero SQL files due to wrong image migration path
+- Date first seen: 2026-05-24
+- Surfaces: Cloud Run migration job / API runtime control-plane routes
+- Symptom: Migration execution reports success but runtime endpoints fail with `relation "workspaces" does not exist`.
+- Root cause: Runtime image copied root `migrations/` (only `.gitkeep`) into `./apps/migrations`, while core migrations live under `packages/core/migrations`. The migrator loaded no `.sql` files and applied nothing.
+- Fix: Update [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile) to copy `packages/core/migrations` into `./apps/migrations`, redeploy, and re-run migration job.
+- Prevention: Keep runtime migration copy path aligned to the actual source-of-truth migration directory; verify migration execution logs include non-empty `applied` or `skipped` migration IDs.
+- Verification:
+  - `gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="neutrino-api-core-migrate" ...'`
+  - confirm migration output lists `0001_core_foundation` and `0002_durable_repository_alignment` in `applied` or `skipped`
+  - `curl -i <service-url>/v1/control-plane/context` returns `200` (with auth headers).

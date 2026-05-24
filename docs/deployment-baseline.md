@@ -294,6 +294,82 @@ Required controls before relying on this database for production data:
 
 Keep runtime DB configuration fully environment-driven through `CORE_DATABASE_URL` or `DATABASE_URL`.
 
+Internal alpha migration gate:
+
+1. Load local env and migrate the dedicated test database:
+   `set -a; . ./.env; set +a; CORE_DATABASE_URL="$CORE_TEST_DATABASE_URL" npm run migrate --workspace @neutrino/core`
+2. Run durable repository validation:
+   `npm run test:core:postgres`
+3. Validate the normal code gates:
+   `npm run typecheck`, `npm test -- --run`, and `npm run architecture:check`
+4. Confirm live infrastructure shape:
+   `terraform output` from `infra/terraform/cloud-run`
+5. Confirm the production secret exists without printing it:
+   `gcloud secrets versions describe latest --secret=CORE_DATABASE_URL --project=neutrino-491317`
+6. Execute and verify the migration job:
+   `gcloud run jobs execute neutrino-api-core-migrate --region=us-central1 --project=neutrino-491317 --wait`
+7. Confirm recent migration execution status:
+   `gcloud run jobs executions list --job=neutrino-api-core-migrate --region=us-central1 --project=neutrino-491317 --limit=5`
+8. Confirm API readiness:
+   `gcloud run services describe neutrino-api --region=us-central1 --project=neutrino-491317` and `curl -i <service-url>/readyz`
+
+Do not run integration-test writes against `platform_prod`; use `CORE_TEST_DATABASE_URL` and a dedicated test database such as `platform_test`.
+
+### Phase 2 Closure Drill Command
+
+Use one command for the backup/restore + migration-promotion drill:
+
+```sh
+npm run phase2:drill
+```
+
+Required environment variables before running:
+
+```sh
+export CORE_PHASE2_MAINTENANCE_DATABASE_URL="postgresql://platform_user:<password>@<host>:5432/postgres?sslmode=disable"
+export CORE_PHASE2_STAGE_DATABASE_URL="postgresql://platform_user:<password>@<host>:5432/platform_phase2_stage?sslmode=disable"
+export CORE_PHASE2_RESTORE_DATABASE_URL="postgresql://platform_user:<password>@<host>:5432/platform_phase2_restore?sslmode=disable"
+export CORE_PHASE2_STAGE_DB_NAME="platform_phase2_stage"
+export CORE_PHASE2_RESTORE_DB_NAME="platform_phase2_restore"
+```
+
+Expected success output includes:
+
+- `phase2_drill:success`
+- `probe_count=1`
+- `stage_migration=pending: 0`
+- `restore_migration=pending: 0`
+
+Drill script source: [scripts/phase2-core-persistence-drill.sh](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/scripts/phase2-core-persistence-drill.sh)
+
+### Phase 2 Evidence Record
+
+Record these fields in Linear ticket `THU-19` and keep this file updated:
+
+- UTC run timestamp
+- stage and restore database names
+- backup artifact path
+- probe ID and probe count
+- stage migration status summary
+- restore migration status summary
+- readiness check result (`/readyz`)
+- operator initials
+
+Phase 2 is complete only after one successful drill evidence record is attached.
+
+Latest evidence record:
+
+- UTC run timestamp: `2026-05-24T16:58:08Z`
+- stage database: `platform_phase2_stage`
+- restore database: `platform_phase2_restore`
+- backup artifact: `/tmp/platform_phase2_stage-20260524T165808Z.dump`
+- probe ID: `phase2-probe-20260524T165808Z`
+- probe count: `1`
+- stage migration status: `pending: 0`
+- restore migration status: `pending: 0`
+- readiness check: `curl -i https://neutrino-api-jeo3uupuxa-uc.a.run.app/readyz` returned HTTP `200` with `{"status":"ready"}`
+- operator: `kevin@pico.ai` (Codex-assisted execution)
+
 ## Blob and Artifact Storage
 
 Blob/artifact storage is part of the platform deployment boundary even though the first deploy path may use local development backing.
@@ -303,6 +379,23 @@ Blob/artifact storage is part of the platform deployment boundary even though th
 - The first development backing can be local filesystem or local object storage, but the port should match production object storage semantics.
 - Production backing should remain swappable among S3-compatible storage, GCS, R2, or equivalent object stores.
 - When production object storage is selected, document provider setup, bucket/container names, IAM, secrets, lifecycle policy, backup/export assumptions, and verification commands in this file.
+
+Current GCP baseline for internal alpha:
+
+- Terraform manages a dedicated artifact bucket (`artifact_bucket_name`) with uniform bucket-level access and public access prevention enforced.
+- Cloud Run service and migration job receive:
+  - `OBJECT_STORAGE_PROVIDER`
+  - `OBJECT_STORAGE_GCS_BUCKET`
+  - `OBJECT_STORAGE_GCS_PREFIX`
+- Runtime service account receives `roles/storage.objectAdmin` on the artifact bucket.
+
+Verification commands:
+
+```sh
+terraform output artifact_bucket_name artifact_bucket_url
+gcloud storage ls gs://$(terraform output -raw artifact_bucket_name)
+gcloud run services describe neutrino-api --region=us-central1 --project=neutrino-491317
+```
 
 ## Web Deployment
 

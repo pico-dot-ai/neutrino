@@ -106,6 +106,7 @@ export interface MemoryIndex {
 export interface ArtifactRepository {
   createArtifact(record: ArtifactRecord): Promise<ArtifactRecord>;
   getArtifact(artifactId: string): Promise<ArtifactRecord | null>;
+  listArtifacts(scope: ScopeRef): Promise<ArtifactRecord[]>;
 }
 
 export interface UsageLedger {

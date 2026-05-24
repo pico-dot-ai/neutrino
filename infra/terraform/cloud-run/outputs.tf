@@ -37,3 +37,11 @@ output "postgres_user" {
 output "postgres_password_secret_name" {
   value = var.postgres_password_secret_name
 }
+
+output "artifact_bucket_name" {
+  value = google_storage_bucket.artifacts.name
+}
+
+output "artifact_bucket_url" {
+  value = google_storage_bucket.artifacts.url
+}

@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "@neutrino/ai-gateway": "0.1.0",
     "@neutrino/core": "0.1.0",
     "@neutrino/platform-gateway": "0.1.0",

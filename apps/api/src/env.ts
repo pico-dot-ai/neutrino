@@ -6,7 +6,11 @@ const envSchema = z.object({
   OPENAI_MODEL: z.string().min(1).default("gpt-5-mini"),
   API_PROXY_SHARED_SECRET: z.string().min(1),
   CORE_DATABASE_URL: z.string().min(1).optional(),
-  DATABASE_URL: z.string().min(1).optional()
+  DATABASE_URL: z.string().min(1).optional(),
+  OBJECT_STORAGE_PROVIDER: z.enum(["local", "gcs"]).optional(),
+  OBJECT_STORAGE_LOCAL_ROOT: z.string().min(1).optional(),
+  OBJECT_STORAGE_GCS_BUCKET: z.string().min(1).optional(),
+  OBJECT_STORAGE_GCS_PREFIX: z.string().optional()
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;

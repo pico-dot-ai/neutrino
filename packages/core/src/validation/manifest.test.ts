@@ -54,6 +54,15 @@ describe("validatePlatformManifest", () => {
     ).toThrow(/versioned service/);
   });
 
+  it("rejects app manifests without packageName", () => {
+    const invalidManifest = {
+      ...devAgentAppManifest
+    };
+    delete (invalidManifest as { packageName?: string }).packageName;
+
+    expect(() => validatePlatformManifest(invalidManifest)).toThrow(/must define packageName/);
+  });
+
   it("rejects services without package-style identity and schemas", () => {
     expect(() =>
       validatePlatformManifest({
@@ -70,5 +79,12 @@ describe("validatePlatformManifest", () => {
         }
       })
     ).toThrow(/schema.output/);
+
+    expect(() =>
+      validatePlatformManifest({
+        ...devAgentServiceManifest,
+        summary: undefined
+      })
+    ).toThrow(/must define summary/);
   });
 });

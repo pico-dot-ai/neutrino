@@ -17,6 +17,9 @@ github_repository_name        = "neutrino"
 artifact_registry_hostname    = "us-central1-docker.pkg.dev"
 artifact_registry_repository  = "cloud-run-source-deploy"
 api_image_name                = "neutrino-api"
+artifact_bucket_name          = "neutrino-artifacts-neutrino-491317"
+object_storage_provider       = "gcs"
+object_storage_gcs_prefix     = "artifacts"
 
 enable_self_managed_postgres           = true
 postgres_deployment_mode               = "prototype"

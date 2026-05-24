@@ -376,6 +376,256 @@ describe("createHttpServer", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized." });
   });
 
+  it("registers manifests, lists app/service/binding inventory, and invokes an app action", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FakeProvider(),
+      env: {
+        PORT: 0,
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5-mini",
+        API_PROXY_SHARED_SECRET: "secret"
+      }
+    });
+
+    const contextResponse = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/context", {
+        headers: {
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:admin"
+        }
+      })
+    );
+    expect(contextResponse.status).toBe(200);
+    await expect(contextResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        scope: {
+          workspaceId: "workspace_picoai",
+          projectId: "project_dev_agent"
+        },
+        actor: {
+          actorId: "local:admin",
+          email: "admin@pico.ai"
+        }
+      })
+    );
+
+    const appResponse = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/apps", {
+        headers: {
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai"
+        }
+      })
+    );
+    expect(appResponse.status).toBe(200);
+    await expect(appResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        apps: expect.arrayContaining([
+          expect.objectContaining({
+            id: "pico.dev-agent",
+            actions: expect.arrayContaining([
+              expect.objectContaining({
+                actionId: "generate_reply",
+                uses: "@pico/dev-agent-service@1.0.0"
+              })
+            ])
+          })
+        ])
+      })
+    );
+
+    const serviceResponse = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/services", {
+        headers: {
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai"
+        }
+      })
+    );
+    expect(serviceResponse.status).toBe(200);
+    await expect(serviceResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        services: expect.arrayContaining([
+          expect.objectContaining({
+            serviceId: "pico.service.dev-agent"
+          })
+        ])
+      })
+    );
+
+    const bindingResponse = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/bindings", {
+        headers: {
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai"
+        }
+      })
+    );
+    expect(bindingResponse.status).toBe(200);
+    await expect(bindingResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        bindings: expect.arrayContaining([
+          expect.objectContaining({
+            requirement: "languageModel",
+            provider: "openai"
+          })
+        ])
+      })
+    );
+
+    const invokeResponse = await handler(
+      new Request("http://127.0.0.1/v1/apps/pico.dev-agent/actions/generate_reply/invoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:admin",
+          "x-pico-admin-groups": "picoai,app_admin"
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Run action" }]
+        })
+      })
+    );
+    expect(invokeResponse.status).toBe(200);
+    await expect(invokeResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        run: expect.objectContaining({
+          status: "succeeded",
+          appId: "pico.dev-agent",
+          actionId: "generate_reply",
+          actorId: "local:admin",
+          servicePackageName: "@pico/dev-agent-service",
+          serviceVersion: 1,
+          bindingSnapshotId: "pico.binding.dev-agent.local"
+        }),
+        memory: expect.objectContaining({
+          kind: "action_output",
+          content: "generated with gpt-5-mini"
+        }),
+        artifact: expect.objectContaining({
+          objectUri: expect.stringContaining("local-object://runs/"),
+          checksum: expect.any(String)
+        })
+      })
+    );
+  });
+
+  it("rejects app action invocation without an authorized actor grant", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FakeProvider(),
+      env: {
+        PORT: 0,
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5-mini",
+        API_PROXY_SHARED_SECRET: "secret"
+      }
+    });
+
+    const response = await handler(
+      new Request("http://127.0.0.1/v1/apps/pico.dev-agent/actions/generate_reply/invoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:someone-else"
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Run action" }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Actor is not allowed to invoke this action."
+    });
+  });
+
+  it("allows app action invocation when a group grant authorizes the actor", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FakeProvider(),
+      env: {
+        PORT: 0,
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5-mini",
+        API_PROXY_SHARED_SECRET: "secret"
+      }
+    });
+
+    const response = await handler(
+      new Request("http://127.0.0.1/v1/apps/pico.dev-agent/actions/generate_reply/invoke", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:someone-else",
+          "x-pico-admin-groups": "app_admin"
+        },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "Run action" }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("registers binding manifests through control-plane endpoint", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FakeProvider(),
+      env: {
+        PORT: 0,
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5-mini",
+        API_PROXY_SHARED_SECRET: "secret"
+      }
+    });
+
+    const response = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/bindings/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:admin",
+          "x-pico-admin-groups": "app_admin"
+        },
+        body: JSON.stringify({
+          manifest: {
+            kind: "pico.binding",
+            version: 1,
+            id: "pico.binding.test",
+            environment: "local",
+            bindings: {
+              languageModel: {
+                provider: "openai",
+                model: "gpt-test"
+              }
+            }
+          }
+        })
+      })
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        bindings: [
+          expect.objectContaining({
+            requirement: "languageModel",
+            model: "gpt-test"
+          })
+        ]
+      })
+    );
+  });
+
   it("registers an OAuth app through control-plane endpoint", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
@@ -393,7 +643,9 @@ describe("createHttpServer", () => {
         headers: {
           "Content-Type": "application/json",
           "x-api-proxy-secret": "secret",
-          "x-pico-admin-email": "admin@pico.ai"
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:admin",
+          "x-pico-admin-groups": "app_admin"
         },
         body: JSON.stringify({
           displayName: "Decision Tracker",
@@ -414,6 +666,50 @@ describe("createHttpServer", () => {
         clientSecret: expect.any(String)
       })
     );
+  });
+
+  it("rejects control-plane writes when actor cannot manage workspace", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FakeProvider(),
+      env: {
+        PORT: 0,
+        OPENAI_API_KEY: "test",
+        OPENAI_MODEL: "gpt-5-mini",
+        API_PROXY_SHARED_SECRET: "secret"
+      }
+    });
+
+    const response = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/manifests/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:someone-else",
+          "x-pico-admin-groups": "viewer"
+        },
+        body: JSON.stringify({
+          manifest: {
+            kind: "pico.binding",
+            version: 1,
+            id: "pico.binding.unauthorized",
+            environment: "local",
+            bindings: {
+              languageModel: {
+                provider: "openai",
+                model: "gpt-test"
+              }
+            }
+          }
+        })
+      })
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Actor is not allowed to manage control-plane resources."
+    });
   });
 
   it("rejects control-plane requests without proxy secret", async () => {

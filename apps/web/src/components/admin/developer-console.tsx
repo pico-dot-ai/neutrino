@@ -3,13 +3,23 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Input, Separator } from "@neutrino/ui";
+import { Boxes, Braces, Cable, History, Play, RefreshCw, Send, Settings, Upload } from "lucide-react";
+import { Badge, Button, Input, Separator, Textarea } from "@neutrino/ui";
 
 type ActorPayload = {
   actor: {
+    actorId?: string;
     username: string;
     email: string;
     groups: string[];
+  };
+};
+
+type ContextPayload = {
+  scope: ManifestRecord["scope"];
+  actor: {
+    actorId: string | null;
+    email: string;
   };
 };
 
@@ -36,6 +46,11 @@ type RuntimeRunRecord = {
   run: {
     runId: string;
     status: string;
+    appId: string;
+    actionId?: string;
+    actorId?: string;
+    servicePackageName?: string;
+    serviceVersion?: number;
     agentId: string;
     harnessId: string;
     conversationId: string;
@@ -63,6 +78,8 @@ type UsageRecord = {
 type RuntimeListPayload = {
   runs: RuntimeRunRecord[];
   usage: UsageRecord[];
+  memory: MemoryRecord[];
+  artifacts: ArtifactRecord[];
 };
 
 type ManifestRecord = {
@@ -78,6 +95,58 @@ type ManifestRecord = {
   };
   version: number;
   lifecycleState: string;
+  manifest?: unknown;
+};
+
+type AppInventoryRecord = {
+  id: string;
+  packageName: string;
+  name: string;
+  version: number;
+  visibility?: { access: string };
+  objects: Array<{ objectId: string; schema: string; view?: string; visibility?: { access: string } }>;
+  actions: Array<{ actionId: string; input?: string; output?: string; uses?: string; visibility?: { access: string } }>;
+  views: Array<{ viewId: string; resource: string; visibility?: { access: string } }>;
+};
+
+type ServiceInventoryRecord = {
+  serviceId: string;
+  manifest: {
+    id: string;
+    packageName?: string;
+    name?: string;
+    summary?: string;
+    version: number;
+  };
+  lifecycleState: string;
+};
+
+type BindingInventoryRecord = {
+  bindingId: string;
+  manifestId: string;
+  scope: ManifestRecord["scope"];
+  environment: string;
+  requirement: string;
+  provider: string;
+  model?: string;
+  serviceId?: string;
+  capabilityId?: string;
+};
+
+type MemoryRecord = {
+  memoryId: string;
+  kind: string;
+  content: string;
+  sourceRunId?: string;
+  createdAt: string;
+};
+
+type ArtifactRecord = {
+  artifactId: string;
+  objectUri: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: string;
 };
 
 async function requestJson<T>(url: string, init?: RequestInit) {
@@ -96,36 +165,125 @@ async function requestJson<T>(url: string, init?: RequestInit) {
 export function DeveloperConsole() {
   const router = useRouter();
   const [actor, setActor] = React.useState<ActorPayload["actor"] | null>(null);
+  const [context, setContext] = React.useState<ContextPayload | null>(null);
   const [oauthApps, setOauthApps] = React.useState<OAuthAppRecord[]>([]);
   const [capabilities, setCapabilities] = React.useState<CapabilityRecord[]>([]);
+  const [apps, setApps] = React.useState<AppInventoryRecord[]>([]);
+  const [services, setServices] = React.useState<ServiceInventoryRecord[]>([]);
+  const [bindings, setBindings] = React.useState<BindingInventoryRecord[]>([]);
   const [runtimeRuns, setRuntimeRuns] = React.useState<RuntimeRunRecord[]>([]);
   const [runtimeUsage, setRuntimeUsage] = React.useState<UsageRecord[]>([]);
+  const [runtimeMemory, setRuntimeMemory] = React.useState<MemoryRecord[]>([]);
+  const [runtimeArtifacts, setRuntimeArtifacts] = React.useState<ArtifactRecord[]>([]);
   const [manifestRecords, setManifestRecords] = React.useState<ManifestRecord[]>([]);
   const [message, setMessage] = React.useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isInvoking, setIsInvoking] = React.useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = React.useState<string | null>(null);
   const [displayName, setDisplayName] = React.useState("Sample Internal App");
   const [appType, setAppType] = React.useState<OAuthAppRecord["appType"]>("consumer");
   const [capabilityName, setCapabilityName] = React.useState("decision-tracker");
   const [capabilityVersion, setCapabilityVersion] = React.useState("0.1.0");
   const [ownerAppId, setOwnerPicoAppId] = React.useState("");
+  const [manifestJson, setManifestJson] = React.useState(
+    JSON.stringify(
+      {
+        kind: "pico.app",
+        version: 1,
+        id: "acme.support-desk",
+        packageName: "@acme/support-desk",
+        name: "Support Desk",
+        visibility: { access: "internal" },
+        objects: {
+          ticket: {
+            schema: "./schemas/ticket.json",
+            view: "ui://acme/support-desk/ticket",
+            visibility: { access: "inherited" }
+          }
+        },
+        actions: {
+          summarize_ticket: {
+            input: "./schemas/summarize-ticket.input.json",
+            output: "./schemas/summarize-ticket.output.json",
+            uses: "@pico/dev-agent-service@1.0.0",
+            visibility: { access: "inherited" }
+          }
+        },
+        views: {
+          ticket: {
+            resource: "ui://acme/support-desk/ticket",
+            visibility: { access: "inherited" }
+          }
+        },
+        agents: ["pico.dev-agent.agent"],
+        harnesses: ["pico.dev-agent.harness"]
+      },
+      null,
+      2
+    )
+  );
+  const [bindingJson, setBindingJson] = React.useState(
+    JSON.stringify(
+      {
+        kind: "pico.binding",
+        version: 1,
+        id: "pico.binding.dev-agent.local",
+        name: "Dev agent local bindings",
+        environment: "local",
+        bindings: {
+          languageModel: {
+            provider: "openai",
+            model: "gpt-5.2"
+          },
+          devAgentService: {
+            provider: "core",
+            serviceId: "pico.service.dev-agent",
+            capabilityId: "pico.capability.dev-agent.generate"
+          }
+        }
+      },
+      null,
+      2
+    )
+  );
+  const [invokePrompt, setInvokePrompt] = React.useState("Summarize what this app/action/service path proves.");
 
   const refresh = React.useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const [me, appList, capabilityList, runtimeList, manifestList] = await Promise.all([
+      const [
+        me,
+        contextPayload,
+        appList,
+        capabilityList,
+        platformApps,
+        platformServices,
+        platformBindings,
+        runtimeList,
+        manifestList
+      ] = await Promise.all([
         requestJson<ActorPayload>("/api/auth/me"),
+        requestJson<ContextPayload>("/api/platform/context"),
         requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
         requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities"),
+        requestJson<{ apps: AppInventoryRecord[] }>("/api/platform/apps"),
+        requestJson<{ services: ServiceInventoryRecord[] }>("/api/platform/services"),
+        requestJson<{ bindings: BindingInventoryRecord[] }>("/api/platform/bindings"),
         requestJson<RuntimeListPayload>("/api/platform/runtime/runs"),
         requestJson<{ manifests: ManifestRecord[] }>("/api/platform/manifests")
       ]);
 
       setActor(me.actor);
+      setContext(contextPayload);
       setOauthApps(appList.apps);
       setCapabilities(capabilityList.capabilities);
+      setApps(platformApps.apps);
+      setServices(platformServices.services);
+      setBindings(platformBindings.bindings);
       setRuntimeRuns(runtimeList.runs);
       setRuntimeUsage(runtimeList.usage);
+      setRuntimeMemory(runtimeList.memory ?? []);
+      setRuntimeArtifacts(runtimeList.artifacts ?? []);
       setManifestRecords(manifestList.manifests ?? []);
       setLastRefreshedAt(new Date().toISOString());
 
@@ -218,6 +376,86 @@ export function DeveloperConsole() {
     }
   }
 
+  async function registerManifest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage(null);
+
+    try {
+      const payload = await requestJson<{ manifest: ManifestRecord }>(
+        "/api/platform/manifests/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            scope: context?.scope,
+            manifest: JSON.parse(manifestJson) as unknown
+          })
+        }
+      );
+
+      setMessage(`Registered manifest ${payload.manifest.resourceId}.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to register manifest.");
+    }
+  }
+
+  async function registerBinding(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage(null);
+
+    try {
+      const payload = await requestJson<{ bindings: BindingInventoryRecord[] }>(
+        "/api/platform/bindings/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            scope: context?.scope,
+            manifest: JSON.parse(bindingJson) as unknown
+          })
+        }
+      );
+
+      setMessage(`Registered ${payload.bindings.length} binding records.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to register binding.");
+    }
+  }
+
+  async function invokeDevAgentAction() {
+    setMessage(null);
+    setIsInvoking(true);
+
+    try {
+      const payload = await requestJson<{ run: RuntimeRunRecord["run"] }>(
+        "/api/apps/pico.dev-agent/actions/generate_reply/invoke",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            scope: context?.scope,
+            messages: [{ role: "user", content: invokePrompt }]
+          })
+        }
+      );
+
+      setMessage(`Invocation ${payload.run.runId} finished with ${payload.run.status}.`);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to invoke action.");
+    } finally {
+      setIsInvoking(false);
+    }
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", {
       method: "POST"
@@ -226,45 +464,257 @@ export function DeveloperConsole() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafe,#eef3fb)] px-6 py-8 sm:px-10 sm:py-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <header className="rounded-3xl border border-border/85 bg-white/90 p-6 shadow-[0_20px_70px_rgba(15,23,42,0.07)]">
+    <main className="min-h-screen bg-[#f6f7f9] px-5 py-6 text-foreground sm:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-5">
+        <header className="border-b border-border pb-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">Neutrino</p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight">Developer Console</h1>
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Neutrino</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight">Control Plane</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Register OAuth apps, manage capability publishing, and verify internal platform metadata keyed by <code>app_id</code>.
+                {context ? scopeLabel(context.scope) : "Loading workspace context"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="rounded-full border-border bg-background/80 text-foreground">Internal-only v1</Badge>
+              <Badge className="border-border bg-white text-foreground">
+                {actor?.email ?? context?.actor.email ?? "..."}
+              </Badge>
+              <Button onClick={() => void refresh()} size="sm" type="button" variant="secondary">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {isRefreshing ? "Refreshing" : "Refresh"}
+              </Button>
               <Link href="/admin/debug/chat">
-                <Button size="sm" variant="secondary">Open Debug Chat</Button>
+                <Button size="sm" type="button" variant="ghost">
+                  <Send className="mr-2 h-4 w-4" />
+                  Debug Chat
+                </Button>
               </Link>
-              <Button onClick={() => void logout()} size="sm" variant="ghost">Logout</Button>
+              <Button onClick={() => void logout()} size="sm" type="button" variant="ghost">
+                Logout
+              </Button>
             </div>
           </div>
-
-          <div className="mt-4 text-sm text-muted-foreground">
-            Signed in as <span className="font-medium text-foreground">{actor?.email ?? "..."}</span>
-          </div>
+          {lastRefreshedAt ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Last refreshed {new Date(lastRefreshedAt).toLocaleString()}
+            </p>
+          ) : null}
         </header>
 
         {message ? (
-          <p className="rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-foreground">
-            {message}
-          </p>
+          <p className="border border-border bg-white px-4 py-3 text-sm">{message}</p>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <form className="rounded-3xl border border-border/85 bg-white/90 p-6" onSubmit={registerOAuthApp}>
-            <h2 className="text-lg font-semibold tracking-tight">Register OAuth App</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Creates a new internal app with generated credentials.</p>
-            <div className="mt-4 space-y-3">
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="border border-border bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="flex items-center text-base font-semibold">
+                <Boxes className="mr-2 h-4 w-4" />
+                Apps
+              </h2>
+              <Badge className="border-border bg-background text-foreground">{apps.length}</Badge>
+            </div>
+            <Separator className="my-4" />
+            <div className="grid gap-3">
+              {apps.map((app) => (
+                <article className="border border-border bg-background p-4" key={app.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{app.name}</p>
+                      <p className="text-sm text-muted-foreground">{app.packageName} · v{app.version}</p>
+                    </div>
+                    <Badge className="border-border bg-white text-foreground">
+                      {app.visibility?.access ?? "private"}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+                    <p>{app.objects.length} objects</p>
+                    <p>{app.actions.length} actions</p>
+                    <p>{app.views.length} views</p>
+                  </div>
+                  {app.actions.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {app.actions.map((action) => (
+                        <Badge className="border-border bg-white text-foreground" key={action.actionId}>
+                          {action.actionId}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-border bg-white p-5">
+            <h2 className="flex items-center text-base font-semibold">
+              <Play className="mr-2 h-4 w-4" />
+              Invoke Action
+            </h2>
+            <Separator className="my-4" />
+            <Textarea
+              className="min-h-28"
+              onChange={(event) => setInvokePrompt(event.target.value)}
+              value={invokePrompt}
+            />
+            <Button className="mt-4" disabled={isInvoking} onClick={() => void invokeDevAgentAction()} type="button">
+              <Play className="mr-2 h-4 w-4" />
+              {isInvoking ? "Invoking" : "Invoke Dev Agent"}
+            </Button>
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-3">
+          <div className="border border-border bg-white p-5">
+            <h2 className="flex items-center text-base font-semibold">
+              <Settings className="mr-2 h-4 w-4" />
+              Services
+            </h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {services.map((service) => (
+                <article className="text-sm" key={service.serviceId}>
+                  <p className="font-medium">{service.manifest.name ?? service.manifest.id}</p>
+                  <p className="text-muted-foreground">
+                    {service.manifest.packageName ?? service.serviceId} · v{service.manifest.version}
+                  </p>
+                  <p className="text-muted-foreground">{service.lifecycleState}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-border bg-white p-5">
+            <h2 className="flex items-center text-base font-semibold">
+              <Cable className="mr-2 h-4 w-4" />
+              Bindings
+            </h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {bindings.map((binding) => (
+                <article className="text-sm" key={binding.bindingId}>
+                  <p className="font-medium">{binding.requirement}</p>
+                  <p className="text-muted-foreground">
+                    {binding.environment} · {binding.provider}{binding.model ? ` · ${binding.model}` : ""}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-border bg-white p-5">
+            <h2 className="flex items-center text-base font-semibold">
+              <History className="mr-2 h-4 w-4" />
+              Executions
+            </h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {runtimeRuns.slice(0, 4).map(({ run, traces }) => (
+                <article className="text-sm" key={run.runId}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium">{run.actionId ?? run.runId}</p>
+                    <Badge className="border-border bg-background text-foreground">{run.status}</Badge>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {run.servicePackageName ?? "service"} · model {modelForRun(run.runId)}
+                  </p>
+                  <p className="text-muted-foreground">{traces.length} traces</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <form className="border border-border bg-white p-5" onSubmit={registerManifest}>
+            <h2 className="flex items-center text-base font-semibold">
+              <Braces className="mr-2 h-4 w-4" />
+              Register Manifest
+            </h2>
+            <Separator className="my-4" />
+            <Textarea
+              className="min-h-80 font-mono text-xs"
+              onChange={(event) => setManifestJson(event.target.value)}
+              value={manifestJson}
+            />
+            <Button className="mt-4" type="submit">
+              <Upload className="mr-2 h-4 w-4" />
+              Register Manifest
+            </Button>
+          </form>
+
+          <form className="border border-border bg-white p-5" onSubmit={registerBinding}>
+            <h2 className="flex items-center text-base font-semibold">
+              <Cable className="mr-2 h-4 w-4" />
+              Register Binding
+            </h2>
+            <Separator className="my-4" />
+            <Textarea
+              className="min-h-80 font-mono text-xs"
+              onChange={(event) => setBindingJson(event.target.value)}
+              value={bindingJson}
+            />
+            <Button className="mt-4" type="submit">
+              <Upload className="mr-2 h-4 w-4" />
+              Register Binding
+            </Button>
+          </form>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-3">
+          <div className="border border-border bg-white p-5">
+            <h2 className="text-base font-semibold">Memory</h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {runtimeMemory.slice(0, 4).map((memory) => (
+                <article className="text-sm" key={memory.memoryId}>
+                  <p className="font-medium">{memory.kind}</p>
+                  <p className="line-clamp-2 text-muted-foreground">{memory.content}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-border bg-white p-5">
+            <h2 className="text-base font-semibold">Artifacts</h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {runtimeArtifacts.slice(0, 4).map((artifact) => (
+                <article className="text-sm" key={artifact.artifactId}>
+                  <p className="font-medium">{artifact.objectUri}</p>
+                  <p className="text-muted-foreground">
+                    {artifact.contentType} · {artifact.sizeBytes} bytes
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-border bg-white p-5">
+            <h2 className="text-base font-semibold">Manifest Registry</h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
+              {manifestRecords.slice(0, 6).map((record) => (
+                <article className="text-sm" key={record.manifestId}>
+                  <p className="font-medium">{record.kind}</p>
+                  <p className="text-muted-foreground">
+                    id: {record.resourceId} · version: {record.version} · lifecycle: {record.lifecycleState}
+                  </p>
+                  <p className="text-muted-foreground">{scopeLabel(record.scope)}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5 lg:grid-cols-2">
+          <form className="border border-border bg-white p-5" onSubmit={registerOAuthApp}>
+            <h2 className="text-base font-semibold">OAuth App Registration</h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
               <Input onChange={(event) => setDisplayName(event.target.value)} value={displayName} />
               <select
-                className="h-11 w-full rounded-full border border-input bg-background px-4 text-sm"
+                className="h-10 w-full border border-input bg-background px-3 text-sm"
                 onChange={(event) => setAppType(event.target.value as OAuthAppRecord["appType"])}
                 value={appType}
               >
@@ -273,17 +723,17 @@ export function DeveloperConsole() {
                 <option value="both">both</option>
               </select>
             </div>
-            <Button className="mt-4" type="submit">Register App</Button>
+            <Button className="mt-4" type="submit">Register OAuth App</Button>
           </form>
 
-          <form className="rounded-3xl border border-border/85 bg-white/90 p-6" onSubmit={registerCapability}>
-            <h2 className="text-lg font-semibold tracking-tight">Register Capability</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Publishes a draft capability owned by a provider app.</p>
-            <div className="mt-4 space-y-3">
+          <form className="border border-border bg-white p-5" onSubmit={registerCapability}>
+            <h2 className="text-base font-semibold">Capability Registration</h2>
+            <Separator className="my-4" />
+            <div className="space-y-3">
               <Input onChange={(event) => setCapabilityName(event.target.value)} value={capabilityName} />
               <Input onChange={(event) => setCapabilityVersion(event.target.value)} value={capabilityVersion} />
               <select
-                className="h-11 w-full rounded-full border border-input bg-background px-4 text-sm"
+                className="h-10 w-full border border-input bg-background px-3 text-sm"
                 onChange={(event) => setOwnerPicoAppId(event.target.value)}
                 value={ownerAppId}
               >
@@ -297,123 +747,6 @@ export function DeveloperConsole() {
             </div>
             <Button className="mt-4" type="submit">Register Capability</Button>
           </form>
-        </section>
-
-        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">Manifest Registry</h2>
-          <Separator className="my-4" />
-          <div className="space-y-3">
-            {manifestRecords.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No manifests registered yet.</p>
-            ) : (
-              manifestRecords.slice(0, 12).map((record) => (
-                <article
-                  className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm"
-                  key={record.manifestId}
-                >
-                  <p className="font-medium">{record.kind}</p>
-                  <p className="text-muted-foreground">
-                    id: {record.resourceId} · version: {record.version} · lifecycle: {record.lifecycleState}
-                  </p>
-                  <p className="text-muted-foreground">{scopeLabel(record.scope)}</p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">OAuth Apps</h2>
-          <Separator className="my-4" />
-          <div className="space-y-3">
-            {oauthApps.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No apps registered yet.</p>
-            ) : (
-              oauthApps.map((app) => (
-                <article key={app.app_id} className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm">
-                  <p className="font-medium">{app.displayName}</p>
-                  <p className="text-muted-foreground">{app.app_id}</p>
-                  <p className="text-muted-foreground">
-                    type: {app.appType} · status: {app.status} · prod approved: {String(app.productionApproved)}
-                  </p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
-          <h2 className="text-lg font-semibold tracking-tight">Capabilities</h2>
-          <Separator className="my-4" />
-          <div className="space-y-3">
-            {capabilities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No capabilities registered yet.</p>
-            ) : (
-              capabilities.map((capability) => (
-                <article
-                  className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm"
-                  key={capability.capabilityId}
-                >
-                  <p className="font-medium">{capability.name} {capability.version}</p>
-                  <p className="text-muted-foreground">{capability.capabilityId}</p>
-                  <p className="text-muted-foreground">
-                    owner: {capability.ownerAppId} · lifecycle: {capability.lifecycleState} · internalOnly: {String(capability.internalOnly)}
-                  </p>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-border/85 bg-white/90 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">Dev Agent Runtime</h2>
-            <div className="flex items-center gap-2">
-              {lastRefreshedAt ? (
-                <p className="text-xs text-muted-foreground">
-                  refreshed: {new Date(lastRefreshedAt).toLocaleString()}
-                </p>
-              ) : null}
-              <Button
-                onClick={() => void refresh()}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                {isRefreshing ? "Refreshing..." : "Refresh"}
-              </Button>
-            </div>
-          </div>
-          <Separator className="my-4" />
-          <div className="space-y-3">
-            {runtimeRuns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No runtime runs recorded yet.</p>
-            ) : (
-              runtimeRuns.slice(0, 5).map(({ run, traces }) => (
-                <article className="rounded-2xl border border-border/80 bg-background/80 px-4 py-3 text-sm" key={run.runId}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{run.runId}</p>
-                    <Badge className="rounded-full border-border bg-background/80 text-foreground">{run.status}</Badge>
-                  </div>
-                  <p className="mt-1 text-muted-foreground">
-                    agent: {run.agentId} · harness: {run.harnessId}
-                  </p>
-                  <p className="text-muted-foreground">
-                    model: {modelForRun(run.runId)} · traces: {traces.length}
-                  </p>
-                  <p className="text-muted-foreground">
-                    started: {new Date(run.startedAt).toLocaleString()} · completed: {run.completedAt ? new Date(run.completedAt).toLocaleString() : "running"}
-                  </p>
-                  {run.output ? (
-                    <p className="mt-2 line-clamp-2 text-foreground">{run.output}</p>
-                  ) : null}
-                  {run.error ? (
-                    <p className="mt-2 text-destructive">{run.error}</p>
-                  ) : null}
-                </article>
-              ))
-            )}
-          </div>
         </section>
       </div>
     </main>

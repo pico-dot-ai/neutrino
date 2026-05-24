@@ -21,7 +21,8 @@ async function forwardToControlPlane(request: Request, endpoint: string[]) {
       "Content-Type": "application/json",
       "x-api-proxy-secret": proxyEnv.API_PROXY_SHARED_SECRET,
       "x-pico-admin-email": auth.session.actor.email,
-      "x-pico-admin-actor-id": auth.session.actor.actorId
+      "x-pico-admin-actor-id": auth.session.actor.actorId,
+      "x-pico-admin-groups": auth.session.actor.groups.join(",")
     },
     body:
       request.method === "GET" || request.method === "HEAD"

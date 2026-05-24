@@ -2,7 +2,8 @@
 
 Last updated: 2026-05-24
 Owner: Platform engineering
-Primary status source: this file
+Repo roadmap source: this file
+Execution tracker: Linear project `Neutrino Platform Implementation Roadmap`
 
 ## Scope and Source of Truth
 This roadmap tracks implementation execution for the approved Neutrino platform plan.
@@ -28,12 +29,28 @@ Out of scope for this phase:
 | Phase | Name | Status | Exit Criteria |
 | --- | --- | --- | --- |
 | 1 | Rename and Restructure Foundation | Done | `packages/contracts` removed, `schema/ports/core` shape adopted, imports updated, architecture check + typecheck pass |
-| 2 | Core Persistence (Postgres canonical) | In Progress | `@neutrino/core` repositories + migrations in place, production-managed Postgres provisioning + secret wiring + migration promotion flow validated |
-| 3 | Infrastructure Ports and Adapters | In Progress | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
+| 2 | Core Persistence (Postgres canonical) | Done | `@neutrino/core` repositories + migrations in place, GCP Postgres provisioning + secret wiring validated, backup/restore drill and migration promotion flow validated and documented |
+| 3 | Infrastructure Ports and Adapters | Done | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
 | 4 | Manifest Registry, Catalog, Bindings, and Manifests | In Progress | scoped manifest registry exists, manifests validate, resources register, bindings resolve runtime plan |
 | 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
 | 6 | Dev Agent Runtime | In Progress | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
-| 7 | Service Reuse and Control-Plane UI | Planned | cross-app service reuse/authorization validated and surfaced in UI |
+| 7 | Service Reuse and Control-Plane UI | In Progress | cross-app service reuse/authorization validated and surfaced in UI |
+
+## Current Alpha Milestone: Publish, Bind, Invoke, Inspect
+
+Goal: make the first internal alpha workflow real and repeatable.
+
+Target workflow:
+`developer login -> inspect persisted context -> register/update manifests -> bind service -> invoke app action -> inspect persisted run/trace/usage/memory/artifact history`
+
+Exit criteria:
+- persisted app/service/binding inventory is visible from the control-plane UI
+- manifest and binding registration require authorized actor/group grants
+- Dev Agent action invocation runs through app/action/service identity, not a debug-only path
+- successful and failed executions persist run, trace, usage, memory, and artifact metadata
+- deployed runtime writes artifact bytes to GCS while Postgres owns artifact metadata
+- browser/IAB or HTTP walkthrough verifies the workflow without Playwright
+- backup/restore and migration-promotion work is explicitly tracked before treating production data as durable
 
 ## Detailed Phases
 
@@ -56,7 +73,7 @@ Current notes:
 - Validation gates currently expected for this phase: architecture check and typecheck.
 
 ### Phase 2: Core Persistence (Postgres canonical)
-Status: `In Progress`
+Status: `Done`
 
 Target outcomes:
 - `@neutrino/core` owns canonical persistence for core platform records.
@@ -77,10 +94,14 @@ Current notes:
 - Migration runner and status commands exist in `@neutrino/core` (`npm run migrate --workspace @neutrino/core` and `npm run migrate:status --workspace @neutrino/core`) using `CORE_DATABASE_URL` (or `DATABASE_URL`).
 - Validated on a clean local Postgres 17 instance with pgvector extension (`platform_stage` / `platform_user`), with migration `0001_core_foundation` applied and no pending migrations.
 - Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
+- Postgres-backed repositories are implemented behind the core ports for manifest registry, access graph, bindings, runs, traces, usage, memory, and artifact metadata.
+- `npm run test:core:postgres` validates the durable repository vertical against `CORE_TEST_DATABASE_URL`.
+- GCP Postgres infrastructure has been applied and validated in prototype mode: Terraform output succeeds, Cloud Run migration job completes, and `/readyz` returns HTTP 200.
 - Self-managed Postgres now has explicit Terraform mode profiles:
   - `prototype` (lowest-cost dev): public-IP VM + CIDR-scoped ingress, no Serverless VPC connector/NAT.
   - `hardened` (private): private VM + Serverless VPC connector + Cloud NAT + private ingress path.
-- Remaining Phase 2 closure work: implement Postgres-backed repositories behind the existing ports, apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
+- Backup/restore + migration promotion drill validated on 2026-05-24 UTC using `npm run phase2:drill` against dedicated non-prod databases (`platform_phase2_stage`, `platform_phase2_restore`) with successful probe restore, zero pending migrations on both DBs, and backup artifact `/tmp/platform_phase2_stage-20260524T165808Z.dump`.
+- Live runtime readiness remains healthy after migration validation: `GET /readyz` on `https://neutrino-api-jeo3uupuxa-uc.a.run.app` returned HTTP 200 (`{"status":"ready"}`) on 2026-05-24 UTC.
 
 ### Phase 2 Prototype Profile (Temporary)
 - During concept validation, use self-managed Postgres + pgvector for staging/prod-like environments.
@@ -101,7 +122,7 @@ Current notes:
   - retain ability to switch to managed Postgres later without application-layer rewrites.
 
 ### Phase 3: Infrastructure Ports and Adapters
-Status: `In Progress`
+Status: `Done`
 
 Target outcomes:
 - Ports in place for:
@@ -123,8 +144,9 @@ Current notes:
   - `LocalObjectStorageAdapter` behavior tests for write/read/delete and URI handling.
   - `LocalPolicyEngineAdapter` rule-evaluation tests for allow/deny/default-deny behavior.
   - `PgVectorAdapter` implementation over self-hosted Postgres + pgvector with adapter tests covering upsert/query/delete behavior (executes live when `PGVECTOR_TEST_DATABASE_URL` is provided).
-  - explicit placeholder tests confirming `QdrantAdapter` still throws `Not implemented.`.
-- Remaining closure work: run and capture live pgvector validation against staging self-hosted Postgres, then either implement or explicitly defer the Qdrant adapter for this milestone.
+  - explicit placeholder tests confirming `QdrantAdapter` remains intentionally deferred for the internal-alpha milestone.
+- Decision: pgvector is sufficient for the current milestone; Qdrant is deferred to a future backing-service milestone.
+- Live pgvector validation evidence captured on 2026-05-24 UTC with `PGVECTOR_TEST_DATABASE_URL="$CORE_TEST_DATABASE_URL" npm run test --workspace @neutrino/adapters -- vector/vector-adapters.test.ts` (`2 passed`).
 
 ### Phase 4: Manifest Registry, Catalog, Bindings, and Manifests
 Status: `In Progress`
@@ -192,7 +214,10 @@ Current notes:
 - Login/session/admin surfaces exist; continue hardening and coverage.
 - Postgres-backed core repositories are implemented for manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifact metadata.
 - `CORE_DATABASE_URL` or explicit repository configuration selects durable Postgres repositories; in-memory repositories remain the fallback for local/bootstrap use.
-- Local repository integration coverage is in place behind `CORE_TEST_DATABASE_URL`; it is skipped when no local/test Postgres URL is configured.
+- `npm run test:core:postgres` loads `CORE_TEST_DATABASE_URL`, migrates the test database, and runs the Postgres repository integration test.
+- Local repository integration coverage validates manifest registry, access graph, bindings, successful and failed executions, traces, usage, memory, and artifact metadata against Postgres.
+- API action invocation now writes artifact bytes through `ObjectStorage`; local development uses local object storage and deployed Cloud Run uses GCS.
+- Terraform manages the internal-alpha artifact bucket and injects `OBJECT_STORAGE_PROVIDER`, `OBJECT_STORAGE_GCS_BUCKET`, and `OBJECT_STORAGE_GCS_PREFIX` into Cloud Run service/job environments.
 
 ### Phase 6: Dev Agent Runtime
 Status: `In Progress`
@@ -218,14 +243,16 @@ Current notes:
 - `/v1/chat` runs through the Dev Agent runtime and preserves the existing SSE chat contract.
 - `/v1/chat` accepts optional runtime scope selection (`workspaceId`, `projectId`, `agentId`) while preserving Dev Agent defaults when omitted.
 - `/v1/chat` now carries the authenticated admin `actorId` into runtime execution records, and runtime records include action ID, service package name/version, and schema-version metadata.
+- `POST /v1/apps/:appId/actions/:actionId/invoke` invokes the Dev Agent vertical through app/action/service identity, persists memory and artifact metadata, and denies actors without a matching grant.
+- App action invocation now supports group-aware authorization via `x-pico-admin-groups`.
 - Invalid runtime selection returns an SSE `error` event without changing the stream contract.
-- Authorized control-plane runtime readback (`/v1/control-plane/runtime/runs`) returns run + trace + usage records for the Dev Agent scope.
+- Authorized control-plane runtime readback (`/v1/control-plane/runtime/runs`) returns run, trace, usage, memory, and artifact records for the Dev Agent scope.
 - Admin console runtime panel surfaces run status, model, started/completed timestamps, trace count, output/error preview, and explicit refresh behavior.
 - Browser verification on 2026-05-20 confirmed `/login` auth, `/admin/debug/chat` prompt execution, and `/admin` runtime readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 - Browser verification on 2026-05-21 confirmed the Manifest Registry panel, `/admin/debug/chat` prompt execution, and `/admin` runtime refresh/readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 
 ### Phase 7: Service Reuse and Control-Plane UI
-Status: `Planned`
+Status: `In Progress`
 
 Target outcomes:
 - First reusable Dev Agent service path available through catalog+bindings.
@@ -236,6 +263,14 @@ Validation:
 - Authorized consumer succeeds; unauthorized consumer denied.
 - UI inspection confirms persisted lifecycle visibility.
 
+Current notes:
+- Control-plane APIs now expose context, manifests, apps, services, bindings, and runtime readback.
+- Manifest and binding registration endpoints write the same file-defined manifest resources used by the repo.
+- Control-plane write endpoints require a `can_manage` grant through actor/group authorization.
+- The admin console is moving from OAuth/capability debug panels toward a persisted control-plane inventory surface with app/action/service/binding/runtime/memory/artifact visibility.
+- Internal-alpha workflow verification is complete via deployed HTTP workflow evidence: authorized context/readback, manifest+binding registration, authorized invoke, unauthorized denial, persisted runtime readback, and GCS artifact byte confirmation.
+- Remaining Phase 7 closure work is UI polish and structured manifest editing beyond JSON-first input.
+
 ## Open-Source Evaluations (Post-MVP or Conditional)
 - Identity: Ory Kratos (and later SSO provider integration)
 - Authorization: OpenFGA
@@ -244,12 +279,7 @@ Validation:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Run Postgres repository integration tests against a dedicated local/test database by setting `CORE_TEST_DATABASE_URL`.
-2. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
-3. Add durable run/trace/usage repository coverage for failed and successful runtime executions.
-4. Extend scoped runtime selection beyond the seeded Dev Agent path once durable registry records exist.
-5. Plan the first write/admin workflow for app/object/action/service manifest registration after the durable registry storage contract is validated.
-6. Design the next control-plane UI slice around persisted resources: workspace/project context, app packages/versions, objects, actions, visibility, service packages, bindings, executions, records, traces, usage, memory, and artifacts.
+1. Expand control-plane UI editing from JSON-first manifest entry to structured forms once the persisted resource model stabilizes.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.
@@ -277,5 +307,7 @@ Validation:
 
 ## Roadmap Update Rules
 - Update this file whenever a phase status changes or acceptance criteria change.
+- Check Linear before planning changes; tickets can be added, removed, updated, or reprioritized outside Codex sessions.
+- Keep Linear synchronized with this roadmap when current work, phase status, acceptance criteria, or immediate next actions change.
 - Keep `docs/requirements-baseline.md` as the source for requirement statements and status semantics.
 - For architecture-impacting roadmap changes, update `architecture/contract.json` first, regenerate `docs/architecture-canonical.md`, then update this roadmap.

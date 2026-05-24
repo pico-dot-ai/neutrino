@@ -43,9 +43,10 @@ export function validatePlatformManifest(manifest: PlatformManifest) {
   }
 
   if (manifest.kind === "pico.app") {
-    if (manifest.packageName) {
-      validatePackageName(manifest.packageName, `App manifest ${manifest.id}`);
+    if (!manifest.packageName) {
+      throw new Error(`App manifest ${manifest.id} must define packageName.`);
     }
+    validatePackageName(manifest.packageName, `App manifest ${manifest.id}`);
     if (manifest.visibility) {
       validateVisibilityRule(manifest.visibility, `App manifest ${manifest.id}`);
     }
@@ -91,6 +92,9 @@ export function validatePlatformManifest(manifest: PlatformManifest) {
     }
     if (!manifest.policy) {
       throw new Error(`Service manifest ${manifest.id} must define policy.`);
+    }
+    if (!manifest.summary) {
+      throw new Error(`Service manifest ${manifest.id} must define summary.`);
     }
   }
 

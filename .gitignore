@@ -29,6 +29,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# local runtime data
+.neutrino/
+**/.neutrino/
+
 # local env files
 .env*.local
 .env

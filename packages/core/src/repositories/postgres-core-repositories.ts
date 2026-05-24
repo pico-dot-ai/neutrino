@@ -833,6 +833,28 @@ export class PostgresBindingResolver implements BindingResolver {
       });
     }
 
+    await this.pool.query(
+      `
+        INSERT INTO binding_snapshots (binding_snapshot_id, binding_id, workspace_id, snapshot, created_at)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
+        ON CONFLICT (binding_snapshot_id)
+        DO UPDATE SET
+          binding_id = EXCLUDED.binding_id,
+          snapshot = EXCLUDED.snapshot;
+      `,
+      [
+        manifest.id,
+        records[0]?.bindingId ?? null,
+        scope.workspaceId,
+        JSON.stringify({
+          scope,
+          manifest,
+          bindings: records
+        }),
+        timestamp
+      ]
+    );
+
     return records;
   }
 
@@ -1098,6 +1120,26 @@ export class PostgresArtifactRepository implements ArtifactRepository {
   async getArtifact(artifactId: string): Promise<ArtifactRecord | null> {
     const result = await this.pool.query("SELECT * FROM artifacts WHERE artifact_id = $1;", [artifactId]);
     return result.rows[0] ? this.artifactFromRow(result.rows[0]) : null;
+  }
+
+  async listArtifacts(scope: ScopeRef): Promise<ArtifactRecord[]> {
+    const values: unknown[] = [scope.workspaceId];
+    const clauses = ["workspace_id = $1"];
+    if (scope.projectId === undefined) {
+      clauses.push("project_id IS NULL");
+    } else {
+      clauses.push(`project_id = $${values.length + 1}`);
+      values.push(scope.projectId);
+    }
+    const result = await this.pool.query(
+      `
+        SELECT * FROM artifacts
+        WHERE ${clauses.join(" AND ")}
+        ORDER BY created_at DESC, artifact_id ASC;
+      `,
+      values
+    );
+    return result.rows.map((row) => this.artifactFromRow(row));
   }
 
   private artifactFromRow(row: {

@@ -22,6 +22,16 @@
 - When Notion direction becomes accepted, align repo documentation deliberately: update `docs/requirements-baseline.md` for requirements, update `architecture/contract.json` first for architecture-affecting changes, regenerate `docs/architecture-canonical.md`, and update other docs only where their ownership applies.
 - Keep a clear distinction between product direction in Notion, accepted architecture in repo docs, and implemented behavior in code.
 
+## Linear Execution Tracking Rules
+- Treat Linear as the active execution tracker for implementation work, roadmap slices, and follow-up tasks. Repo docs remain authoritative for architecture, requirements, runtime contracts, and implementation truth.
+- Before generating or revising a plan, check Linear for existing issues related to the proposed work. Tickets may be added, removed, updated, or reprioritized outside Codex sessions, so do not rely on prior-session ticket state without rechecking Linear.
+- Use existing tickets first when they already cover the work.
+- If the plan or roadmap changes and introduces work that is not covered by existing tickets, create new Linear tickets rather than leaving the new work implicit.
+- When repo roadmap, implementation plan, or accepted product direction changes, update Linear so ticket status, scope, and comments reflect the current state of work to be done.
+- Keep Linear synchronized with `docs/implementation-roadmap.md`, `docs/requirements-baseline.md`, and the current implementation state. Do not let tickets remain stale after meaningful code, infrastructure, validation, or planning changes.
+- Use ticket comments to record concrete evidence: files changed when useful, validation commands run, live infrastructure checks, blockers, and remaining acceptance criteria.
+- Prefer moving ticket status based on verified state: planned work stays unstarted, active work moves to in progress, implemented-but-awaiting-review work moves to review, and fully validated work moves to done.
+
 ## Implementation Planning Docs
 - Use `docs/implementation-roadmap.md` as the phase-by-phase implementation tracker and future-session handoff point.
 - Use `docs/requirements-baseline.md` for accepted requirements, deferred requirements, constraints, and open implementation-plan questions.

@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/auth/request-auth";
 
-const protectedPrefixes = ["/admin", "/api/chat", "/api/platform", "/api/auth/me", "/api/auth/logout"];
+const protectedPrefixes = ["/admin", "/api/chat", "/api/apps", "/api/platform", "/api/auth/me", "/api/auth/logout"];
 
 function isProtectedPath(pathname: string) {
   return protectedPrefixes.some(
@@ -45,5 +45,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/chat/:path*", "/api/platform/:path*", "/api/auth/me", "/api/auth/logout"]
+  matcher: ["/admin/:path*", "/api/chat/:path*", "/api/apps/:path*", "/api/platform/:path*", "/api/auth/me", "/api/auth/logout"]
 };

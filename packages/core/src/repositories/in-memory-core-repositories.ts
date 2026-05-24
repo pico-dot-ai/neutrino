@@ -315,6 +315,12 @@ export class InMemoryArtifactRepository implements ArtifactRepository {
   async getArtifact(artifactId: string): Promise<ArtifactRecord | null> {
     return this.records.get(artifactId) ?? null;
   }
+
+  async listArtifacts(scope: ScopeRef): Promise<ArtifactRecord[]> {
+    return Array.from(this.records.values())
+      .filter((record) => sameScope(record.scope, scope))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
 }
 
 export class InMemoryUsageLedger implements UsageLedger {

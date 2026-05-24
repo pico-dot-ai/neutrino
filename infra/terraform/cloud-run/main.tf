@@ -18,6 +18,7 @@ locals {
   self_managed_postgres_enabled = var.enable_self_managed_postgres
   postgres_mode_hardened        = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "hardened"
   postgres_mode_prototype       = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "prototype"
+  artifact_bucket_name          = var.artifact_bucket_name == null ? "neutrino-artifacts-${var.project_id}" : var.artifact_bucket_name
 }
 
 resource "google_secret_manager_secret" "postgres_app_password" {
@@ -34,6 +35,20 @@ resource "google_project_iam_member" "postgres_vm_secret_accessor" {
   project = var.project_id
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${var.runtime_service_account_email}"
+}
+
+resource "google_storage_bucket" "artifacts" {
+  name                        = local.artifact_bucket_name
+  project                     = var.project_id
+  location                    = var.region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+}
+
+resource "google_storage_bucket_iam_member" "runtime_object_admin" {
+  bucket = google_storage_bucket.artifacts.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${var.runtime_service_account_email}"
 }
 
 resource "google_vpc_access_connector" "serverless" {
@@ -213,6 +228,21 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
 
+      env {
+        name  = "OBJECT_STORAGE_PROVIDER"
+        value = var.object_storage_provider
+      }
+
+      env {
+        name  = "OBJECT_STORAGE_GCS_BUCKET"
+        value = google_storage_bucket.artifacts.name
+      }
+
+      env {
+        name  = "OBJECT_STORAGE_GCS_PREFIX"
+        value = var.object_storage_gcs_prefix
+      }
+
       ports {
         container_port = 8080
       }
@@ -286,6 +316,21 @@ resource "google_cloud_run_v2_job" "core_migrate" {
               version = "latest"
             }
           }
+        }
+
+        env {
+          name  = "OBJECT_STORAGE_PROVIDER"
+          value = var.object_storage_provider
+        }
+
+        env {
+          name  = "OBJECT_STORAGE_GCS_BUCKET"
+          value = google_storage_bucket.artifacts.name
+        }
+
+        env {
+          name  = "OBJECT_STORAGE_GCS_PREFIX"
+          value = var.object_storage_gcs_prefix
         }
 
         resources {

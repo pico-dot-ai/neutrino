@@ -252,7 +252,7 @@ Current notes:
 - Browser verification on 2026-05-21 confirmed the Manifest Registry panel, `/admin/debug/chat` prompt execution, and `/admin` runtime refresh/readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 
 ### Phase 7: Service Reuse and Control-Plane UI
-Status: `In Progress`
+Status: `Completed`
 
 Target outcomes:
 - First reusable Dev Agent service path available through catalog+bindings.
@@ -269,7 +269,8 @@ Current notes:
 - Control-plane write endpoints require a `can_manage` grant through actor/group authorization.
 - The admin console is moving from OAuth/capability debug panels toward a persisted control-plane inventory surface with app/action/service/binding/runtime/memory/artifact visibility.
 - Internal-alpha workflow verification is complete via deployed HTTP workflow evidence: authorized context/readback, manifest+binding registration, authorized invoke, unauthorized denial, persisted runtime readback, and GCS artifact byte confirmation.
-- Remaining Phase 7 closure work is UI polish and structured manifest editing beyond JSON-first input.
+- `/admin` now runs as a two-pane control-plane shell (`?section=` hybrid navigation) with persisted inventory sections and structured manifest/binding builders plus JSON escape hatches.
+- Web test coverage now validates section routing, structured registration flows, JSON escape hatch flow, and invoke workflow behavior against existing API contracts.
 
 ## Open-Source Evaluations (Post-MVP or Conditional)
 - Identity: Ory Kratos (and later SSO provider integration)
@@ -279,7 +280,7 @@ Current notes:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Expand control-plane UI editing from JSON-first manifest entry to structured forms once the persisted resource model stabilizes.
+1. Execute deferred production-hardening backlog: staging promotion flow, migration/rollback runbook, and backup/restore drill for the Postgres VM.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

@@ -1,6 +1,6 @@
 # Neutrino Implementation Roadmap
 
-Last updated: 2026-05-20
+Last updated: 2026-05-24
 Owner: Platform engineering
 Primary status source: this file
 
@@ -33,7 +33,7 @@ Out of scope for this phase:
 | 4 | Manifest Registry, Catalog, Bindings, and Manifests | In Progress | scoped manifest registry exists, manifests validate, resources register, bindings resolve runtime plan |
 | 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
 | 6 | Dev Agent Runtime | In Progress | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
-| 7 | Service Donation and Control-Plane UI | Planned | cross-app capability donation/authorization validated and surfaced in UI |
+| 7 | Service Reuse and Control-Plane UI | Planned | cross-app service reuse/authorization validated and surfaced in UI |
 
 ## Detailed Phases
 
@@ -72,13 +72,15 @@ Validation:
 
 Current notes:
 - `packages/core` includes repositories and migration tooling.
+- The foundation SQL now uses the accepted workspace/app/object/action/service/execution/access graph model: `workspaces`, `orgs`, `projects`, `actors`, `groups`, `identities`, `grants`, app packages/versions/installations, object types/objects, action definitions, service packages/versions, bindings/snapshots, executions, records, traces, memory, artifacts, audit, usage, and cost.
+- Kysely database typing is aligned to the foundation SQL.
 - Migration runner and status commands exist in `@neutrino/core` (`npm run migrate --workspace @neutrino/core` and `npm run migrate:status --workspace @neutrino/core`) using `CORE_DATABASE_URL` (or `DATABASE_URL`).
 - Validated on a clean local Postgres 17 instance with pgvector extension (`platform_stage` / `platform_user`), with migration `0001_core_foundation` applied and no pending migrations.
 - Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
 - Self-managed Postgres now has explicit Terraform mode profiles:
   - `prototype` (lowest-cost dev): public-IP VM + CIDR-scoped ingress, no Serverless VPC connector/NAT.
   - `hardened` (private): private VM + Serverless VPC connector + Cloud NAT + private ingress path.
-- Remaining Phase 2 closure work: apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
+- Remaining Phase 2 closure work: implement Postgres-backed repositories behind the existing ports, apply/validate the GCP Postgres infrastructure, populate required secrets, verify backup/restore drill, and validate staging-to-production migration promotion.
 
 ### Phase 2 Prototype Profile (Temporary)
 - During concept validation, use self-managed Postgres + pgvector for staging/prod-like environments.
@@ -157,6 +159,11 @@ Validation:
 - Runtime selection can resolve the agent/harness/binding from request scope instead of hardcoded Dev Agent constants.
 
 Current notes:
+- `pico.app` manifests now support package name, publisher, visibility, objects, actions, and views.
+- `pico.service` manifests now support package name, summary, schema input/output, policy, used tools, followed skills, emitted records, and optional interface functions.
+- Manifest validation rejects app actions without a handler or versioned service reference and rejects invalid service package/schema/policy shape.
+- The platform schema and auth/session surface now use `workspaceId`, `actor`, `actorId`, and `groups`; the old `tenantId`/`principal`/role vocabulary has been removed from active runtime paths.
+- The simple access graph port and in-memory repository are in place for actors, groups, identities, and grants.
 - Dev Agent manifest-set validation coverage now includes app/service/skill/harness/agent/binding manifests.
 - Service registration and binding resolution tests for the Dev Agent local path are in place in `@neutrino/core`.
 - `ManifestRegistry` port and in-memory implementation are in place for scoped manifest registration, listing, lifecycle-aware resolution, and latest-version selection.
@@ -164,7 +171,7 @@ Current notes:
 - Two project-scoped agent manifests with overlapping IDs resolve independently in tests.
 - Read-only manifest control-plane readback (`/v1/control-plane/manifests`) returns seeded registry records with `kind` and `resourceId` filters.
 - Admin console includes a read-only Manifest Registry panel showing manifest kind, resource ID, version, lifecycle state, and scope metadata.
-- The first service-donation vertical is the Dev Agent path: Dev Agent app manifest -> service/capability -> local bindings -> runtime resolution.
+- The first service-reuse vertical is the Dev Agent path: Dev Agent app manifest -> action -> reusable service package -> local bindings -> runtime resolution.
 
 ### Phase 5: Auth and Data Platform
 Status: `In Progress`
@@ -213,11 +220,11 @@ Current notes:
 - Browser verification on 2026-05-20 confirmed `/login` auth, `/admin/debug/chat` prompt execution, and `/admin` runtime readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 - Browser verification on 2026-05-21 confirmed the Manifest Registry panel, `/admin/debug/chat` prompt execution, and `/admin` runtime refresh/readback showing succeeded status, `gpt-5-mini`, timestamps, 2 traces, and output preview.
 
-### Phase 7: Service Donation and Control-Plane UI
+### Phase 7: Service Reuse and Control-Plane UI
 Status: `Planned`
 
 Target outcomes:
-- First donated Dev-agent capability available through catalog+bindings.
+- First reusable Dev Agent service path available through catalog+bindings.
 - Authorization boundary enforced for consumer access.
 - UI reflects persisted catalog/binding/run/trace/usage/memory/artifact state.
 
@@ -233,11 +240,12 @@ Validation:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Define the Postgres-backed manifest registry migration and repository implementation for durable multi-agent manifests.
+1. Implement Postgres-backed repositories for the foundation schema behind the existing ports, starting with manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifacts.
 2. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
 3. Add durable run/trace/usage repository coverage for failed and successful runtime executions.
 4. Extend scoped runtime selection beyond the seeded Dev Agent path once durable registry records exist.
-5. Plan the first write/admin workflow for manifest registration after the durable registry storage contract is validated.
+5. Plan the first write/admin workflow for app/object/action/service manifest registration after the durable registry storage contract is validated.
+6. Design the next control-plane UI slice around persisted resources: workspace/project context, app packages/versions, objects, actions, visibility, service packages, bindings, executions, records, traces, usage, memory, and artifacts.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

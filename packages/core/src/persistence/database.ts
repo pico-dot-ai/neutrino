@@ -26,6 +26,21 @@ export type CoreDatabase = {
     created_at: TimestampColumn;
     updated_at: TimestampColumn;
   };
+  manifest_records: {
+    manifest_id: string;
+    workspace_id: string;
+    org_id: string | null;
+    group_id: string | null;
+    project_id: string | null;
+    app_installation_id: string | null;
+    resource_id: string;
+    kind: string;
+    version: number;
+    lifecycle_state: string;
+    manifest: JSONColumnType<Record<string, unknown>>;
+    created_at: TimestampColumn;
+    updated_at: TimestampColumn;
+  };
   actors: {
     actor_id: string;
     workspace_id: string;
@@ -179,6 +194,9 @@ export type CoreDatabase = {
     project_id: string | null;
     app_installation_id: string | null;
     app_id: string;
+    agent_id: string | null;
+    harness_id: string | null;
+    conversation_id: string | null;
     action_id: string | null;
     actor_id: string;
     service_ref: string;

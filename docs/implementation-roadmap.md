@@ -190,6 +190,9 @@ Validation:
 
 Current notes:
 - Login/session/admin surfaces exist; continue hardening and coverage.
+- Postgres-backed core repositories are implemented for manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifact metadata.
+- `CORE_DATABASE_URL` or explicit repository configuration selects durable Postgres repositories; in-memory repositories remain the fallback for local/bootstrap use.
+- Local repository integration coverage is in place behind `CORE_TEST_DATABASE_URL`; it is skipped when no local/test Postgres URL is configured.
 
 ### Phase 6: Dev Agent Runtime
 Status: `In Progress`
@@ -214,6 +217,7 @@ Validation:
 Current notes:
 - `/v1/chat` runs through the Dev Agent runtime and preserves the existing SSE chat contract.
 - `/v1/chat` accepts optional runtime scope selection (`workspaceId`, `projectId`, `agentId`) while preserving Dev Agent defaults when omitted.
+- `/v1/chat` now carries the authenticated admin `actorId` into runtime execution records, and runtime records include action ID, service package name/version, and schema-version metadata.
 - Invalid runtime selection returns an SSE `error` event without changing the stream contract.
 - Authorized control-plane runtime readback (`/v1/control-plane/runtime/runs`) returns run + trace + usage records for the Dev Agent scope.
 - Admin console runtime panel surfaces run status, model, started/completed timestamps, trace count, output/error preview, and explicit refresh behavior.
@@ -240,7 +244,7 @@ Validation:
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Implement Postgres-backed repositories for the foundation schema behind the existing ports, starting with manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifacts.
+1. Run Postgres repository integration tests against a dedicated local/test database by setting `CORE_TEST_DATABASE_URL`.
 2. Convert memory/artifact work into explicit Phase 5 acceptance tests without introducing a second storage model.
 3. Add durable run/trace/usage repository coverage for failed and successful runtime executions.
 4. Extend scoped runtime selection beyond the seeded Dev Agent path once durable registry records exist.

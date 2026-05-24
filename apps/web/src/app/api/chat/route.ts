@@ -38,7 +38,8 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-proxy-secret": proxyEnv.API_PROXY_SHARED_SECRET
+        "x-api-proxy-secret": proxyEnv.API_PROXY_SHARED_SECRET,
+        "x-pico-admin-actor-id": adminResult.session.actor.actorId
       },
       body: JSON.stringify(payload)
     });

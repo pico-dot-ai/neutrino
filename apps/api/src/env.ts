@@ -4,7 +4,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   OPENAI_API_KEY: z.string().min(1),
   OPENAI_MODEL: z.string().min(1).default("gpt-5-mini"),
-  API_PROXY_SHARED_SECRET: z.string().min(1)
+  API_PROXY_SHARED_SECRET: z.string().min(1),
+  CORE_DATABASE_URL: z.string().min(1).optional(),
+  DATABASE_URL: z.string().min(1).optional()
 });
 
 export type ApiEnv = z.infer<typeof envSchema>;

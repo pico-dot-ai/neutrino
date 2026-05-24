@@ -254,7 +254,8 @@ Recipes, starters, and templates are deferred scaffolding conveniences, not firs
 - Schema: `packages/schema/src/platform.ts`
 - Required adapters:
   - `packages/core/src/repositories/in-memory-core-repositories.ts`
-- Rule: Repository interfaces describe canonical core persistence; Postgres-backed core implementations remain the production target, not a generic app-level database abstraction.
+  - `packages/core/src/repositories/postgres-core-repositories.ts`
+- Rule: Repository interfaces describe canonical core persistence; Postgres-backed core implementations are selected by CORE_DATABASE_URL or explicit runtime configuration, with in-memory repositories retained for local bootstrap fallback.
 
 ## Required Paths
 - `infra/terraform`

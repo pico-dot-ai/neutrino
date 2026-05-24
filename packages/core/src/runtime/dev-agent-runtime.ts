@@ -4,6 +4,11 @@ import type { ChatMessage, RunRecord, ScopeRef, StreamEvent, TraceRecord, UsageR
 export type DevAgentRuntimeRequest = {
   scope: ScopeRef;
   appId: string;
+  actionId?: string;
+  actorId?: string;
+  servicePackageName?: string;
+  serviceVersion?: number;
+  schemaVersions?: Record<string, string>;
   agentId: string;
   harnessId: string;
   conversationId: string;
@@ -41,6 +46,11 @@ export class DevAgentRuntime {
       runId,
       scope: request.scope,
       appId: request.appId,
+      actionId: request.actionId ?? "generate_reply",
+      actorId: request.actorId ?? "actor_system",
+      servicePackageName: request.servicePackageName ?? "@pico/dev-agent-service",
+      serviceVersion: request.serviceVersion ?? 1,
+      schemaVersions: request.schemaVersions ?? {},
       agentId: request.agentId,
       harnessId: request.harnessId,
       conversationId: request.conversationId,
@@ -110,6 +120,11 @@ export class DevAgentRuntime {
       runId,
       scope: request.scope,
       appId: request.appId,
+      actionId: request.actionId ?? "generate_reply",
+      actorId: request.actorId ?? "actor_system",
+      servicePackageName: request.servicePackageName ?? "@pico/dev-agent-service",
+      serviceVersion: request.serviceVersion ?? 1,
+      schemaVersions: request.schemaVersions ?? {},
       agentId: request.agentId,
       harnessId: request.harnessId,
       conversationId: request.conversationId,

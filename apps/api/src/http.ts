@@ -11,7 +11,7 @@ import type {
   PicoHarnessManifest
 } from "@neutrino/schema";
 import {
-  createInMemoryCoreRepositories,
+  createCoreRepositories,
   DevAgentRuntime,
   devAgentAppManifest,
   devAgentHarnessManifest,
@@ -139,9 +139,16 @@ type RuntimeManifests = {
 export function createAppHandler(options: {
   aiProvider: LanguageModelProvider;
   env: ApiEnv;
+  repositoryConnectionString?: string | null;
 }) {
   const controlPlane = createPlatformControlPlane();
-  const core = createInMemoryCoreRepositories();
+  const core = createCoreRepositories({
+    connectionString:
+      options.repositoryConnectionString === undefined
+        ? options.env.CORE_DATABASE_URL ?? options.env.DATABASE_URL ?? null
+        : options.repositoryConnectionString,
+    defaultScope: devAgentScope
+  });
   const runtime = new DevAgentRuntime({
     languageModelProvider: options.aiProvider,
     runRepository: core.runRepository,
@@ -303,9 +310,14 @@ export function createAppHandler(options: {
         }
 
         const events = [];
+        const actorId = request.headers.get("x-pico-admin-actor-id") ?? "actor_system";
         for await (const event of runtime.stream({
           scope: runtimeManifests.scope,
           appId: runtimeManifests.app.id,
+          actionId: "generate_reply",
+          actorId,
+          servicePackageName: devAgentServiceManifest.packageName,
+          serviceVersion: devAgentServiceManifest.version,
           agentId: runtimeManifests.agent.id,
           harnessId: runtimeManifests.harness.id,
           conversationId: randomId("conversation"),

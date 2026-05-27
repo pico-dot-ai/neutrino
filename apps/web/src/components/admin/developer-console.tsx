@@ -592,7 +592,12 @@ export function DeveloperConsole() {
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    const logoutUrl = response.headers.get("x-neutrino-logout-url");
+    if (logoutUrl) {
+      window.location.assign(logoutUrl);
+      return;
+    }
     router.push("/login");
   }
 

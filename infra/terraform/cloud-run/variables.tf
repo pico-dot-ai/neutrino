@@ -272,3 +272,98 @@ variable "postgres_public_allowed_cidrs" {
   type    = list(string)
   default = ["0.0.0.0/0"]
 }
+
+variable "enable_kratos" {
+  type    = bool
+  default = false
+}
+
+variable "kratos_image" {
+  type    = string
+  default = "oryd/kratos:v26.2.0"
+}
+
+variable "kratos_public_service_name" {
+  type    = string
+  default = "neutrino-kratos-public"
+}
+
+variable "kratos_admin_service_name" {
+  type    = string
+  default = "neutrino-kratos-admin"
+}
+
+variable "kratos_migrate_job_name" {
+  type    = string
+  default = "neutrino-kratos-migrate"
+}
+
+variable "kratos_db_bootstrap_job_name" {
+  type    = string
+  default = "neutrino-kratos-db-bootstrap"
+}
+
+variable "kratos_public_ingress" {
+  type    = string
+  default = "INGRESS_TRAFFIC_ALL"
+}
+
+variable "kratos_admin_ingress" {
+  type    = string
+  default = "INGRESS_TRAFFIC_INTERNAL_ONLY"
+}
+
+variable "kratos_log_level" {
+  type    = string
+  default = "info"
+}
+
+variable "kratos_revision_marker" {
+  type    = string
+  default = "2026-05-25"
+}
+
+variable "kratos_config_secret_name" {
+  type    = string
+  default = "KRATOS_CONFIG_YAML"
+}
+
+variable "kratos_identity_schema_secret_name" {
+  type    = string
+  default = "KRATOS_IDENTITY_SCHEMA_JSON"
+}
+
+variable "kratos_dsn_secret_name" {
+  type    = string
+  default = "KRATOS_DSN"
+}
+
+variable "kratos_secrets_default_secret_name" {
+  type    = string
+  default = "KRATOS_SECRETS_DEFAULT"
+}
+
+variable "kratos_secrets_cookie_secret_name" {
+  type    = string
+  default = "KRATOS_SECRETS_COOKIE"
+}
+
+variable "kratos_oidc_providers_secret_name" {
+  type    = string
+  default = "KRATOS_OIDC_PROVIDERS_JSON"
+}
+
+variable "kratos_postgres_password_secret_name" {
+  type    = string
+  default = "KRATOS_POSTGRES_PASSWORD"
+}
+
+variable "kratos_database_name" {
+  type    = string
+  default = "kratos"
+}
+
+variable "kratos_database_user" {
+  type    = string
+  default = "kratos_user"
+}

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "google",
+    "provider": "google",
+    "client_id": "replace-me",
+    "client_secret": "replace-me",
+    "mapper_url": "base64://ZnVuY3Rpb24oY2xhaW1zKSB7aWRlbnRpdHk6IHt0cmFpdHM6IHtlbWFpbDogY2xhaW1zLmVtYWlsLCB1c2VybmFtZTogc3RkLm9iamVjdEhhcyhjbGFpbXMsICJwcmVmZXJyZWRfdXNlcm5hbWUiKSA/IGNsYWltcy5wcmVmZXJyZWRfdXNlcm5hbWUgOiBjbGFpbXMuZW1haWwsIGdyb3VwczogW119fX0=",
+    "scope": ["openid", "email", "profile"]
+  }
+]

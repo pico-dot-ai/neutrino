@@ -4,6 +4,7 @@ import { authenticateLocalIdentity } from "@/lib/auth/identity";
 import { isEligibleAdminActor } from "@/lib/auth/policy";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { issueAdminSession } from "@/lib/auth/session";
+import { getAuthPolicyEnv } from "@/lib/config";
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -24,6 +25,20 @@ function sanitizeNext(next: string | undefined) {
 }
 
 export async function POST(request: Request) {
+  const authEnv = getAuthPolicyEnv();
+  if (authEnv.AUTH_PROVIDER !== "local") {
+    return NextResponse.json(
+      { error: "Local credential login is disabled for hosted identity mode." },
+      { status: 400 }
+    );
+  }
+  if (process.env.NODE_ENV === "production" && authEnv.AUTH_LOCAL_MODE !== "emergency") {
+    return NextResponse.json(
+      { error: "Local credential login is disabled outside emergency fallback mode." },
+      { status: 400 }
+    );
+  }
+
   try {
     const payload = loginSchema.parse(await request.json());
     const actor = await authenticateLocalIdentity({

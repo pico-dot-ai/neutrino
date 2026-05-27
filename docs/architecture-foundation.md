@@ -37,6 +37,9 @@ If there is any mismatch, `architecture/contract.json` is the source of truth fo
 - Accepted harnesses as reusable operational environments around agents, not eval runners.
 - Accepted conversations as reusable human and multi-agent runtime primitives.
 - Accepted auth, Postgres, pgvector, core memory, blob/artifact storage, run records, traces, usage, cost, and audit records as first-run platform-core concerns.
+- Accepted Ory/Kratos as the authentication and session-management target, with local username/password retained only as a bootstrap/development fallback.
+- Accepted OpenFGA as the durable runtime authorization model behind `PolicyEngine`; Ory Keto/Permissions remains a related Zanzibar-style option but is not the selected runtime authz engine.
+- Deferred permission builder UX until after the OpenFGA model is implemented and validated; any future builder must project to OpenFGA models and relationship tuples.
 - Service definitions are not Docker-like container packaging specs in the current plan. Image, entrypoint, port, healthcheck, compose, and sidecar details are implementation/runtime/binding details to add only when a concrete runtime need exists.
 - Execution rules are part of the architecture boundary: no execution without actor, no record without scope, no retrieval without policy, no service without version, no binding without snapshot, and no output without schema.
 

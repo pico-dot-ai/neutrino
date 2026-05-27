@@ -17,6 +17,9 @@ export interface IdentityProvider {
   validateToken?(
     request: TokenValidationRequest
   ): Promise<AuthenticatedActor | null>;
+  validateBrowserSession?(request: {
+    cookieHeader: string | null;
+  }): Promise<AuthSession | null>;
 }
 
 export interface SessionManager {

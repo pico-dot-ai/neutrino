@@ -49,3 +49,6 @@ next-env.d.ts
 *.tfstate
 *.tfstate.backup
 tfplan*
+
+# kratos rendered runtime config (can contain secrets)
+infra/kratos/kratos.config.rendered.yml

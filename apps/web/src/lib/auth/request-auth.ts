@@ -1,6 +1,6 @@
 import { getAuthPolicyEnv } from "@/lib/config";
 import { isEligibleAdminActor } from "./policy";
-import { parseSessionCookie, readAdminSession } from "./session";
+import { readAdminSessionFromCookieHeader } from "./session";
 
 export async function getAdminSessionFromCookieHeader(cookieHeader: string | null) {
   const { APP_AUTH_ENABLED } = getAuthPolicyEnv();
@@ -20,12 +20,7 @@ export async function getAdminSessionFromCookieHeader(cookieHeader: string | nul
     };
   }
 
-  const token = parseSessionCookie(cookieHeader);
-  if (!token) {
-    return null;
-  }
-
-  return readAdminSession(token);
+  return readAdminSessionFromCookieHeader(cookieHeader);
 }
 
 export async function requireAdminSession(cookieHeader: string | null) {

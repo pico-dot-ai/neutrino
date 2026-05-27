@@ -26,9 +26,11 @@ Baseline principles:
 The first serious implementation plan should include:
 - Hosted auth surface at `auth.pico.ai`
 - Real login page, not HTTP Basic Auth
-- Local username/password adapter for development and early internal use
-- Migration path to Ory Kratos
+- Ory/Kratos as the accepted authentication and session-management target
+- Local username/password adapter only for development, bootstrap, and emergency fallback until Ory/Kratos is implemented
 - SSO path through identity, authenticator, directory, and policy ports
+- OpenFGA as the accepted durable runtime authorization model behind `PolicyEngine`
+- Current grants as source inputs, audit metadata, and local/bootstrap records that sync into OpenFGA relationship tuples during the authz implementation
 - Hosted Postgres as durable system of record
 - pgvector installed with Postgres for the initial vector/retrieval path
 - ObjectStorage and artifact repository port with local development backing and future production object-store backing
@@ -39,7 +41,8 @@ The first serious implementation plan should include:
 Current repo work already includes or is moving toward:
 - Internal API-first platform keyed by `app_id`
 - App registration and OAuth management in Neutrino admin console
-- Local identity/session ports and adapters
+- Local identity/session ports and adapters, with Ory/Kratos as the accepted authn/session target
+- Local policy adapter, with OpenFGA as the accepted durable authz target
 - Session-gated admin console and debug tooling
 - Capability and OAuth client catalog gateway wrappers
 - Independent app repo deploy ownership for frontend and backend

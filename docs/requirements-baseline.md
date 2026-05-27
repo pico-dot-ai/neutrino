@@ -14,6 +14,7 @@ Related architecture documents:
 - Canonical architecture contract: `architecture/contract.json`
 - Generated architecture view: `docs/architecture-canonical.md`
 - Architecture rationale and decision history: `docs/architecture-foundation.md`
+- Auth baseline and OpenFGA mapping: `docs/auth-baseline.md`
 - Agent-facing repo rules: `AGENTS.md`
 
 Requirement statements and statuses must be maintained here, not in architecture rationale docs.
@@ -99,10 +100,13 @@ Build picoAI as a composable AI service platform: a system for defining, running
 | --- | --- | --- |
 | AUTH-001 | Accepted | Auth must be part of the first serious implementation run under `auth.pico.ai`. |
 | AUTH-002 | Accepted | Product authentication must use a real login page, not HTTP Basic Auth. |
-| AUTH-003 | Accepted | The first auth backend may be local username/password to unblock development and internal usage. |
-| AUTH-004 | Accepted | Auth must stay behind ports and adapters so the backend can move to Ory Kratos. |
+| AUTH-003 | Accepted | Ory/Kratos is the accepted authentication and session-management target; local username/password may remain only as a development, bootstrap, or emergency fallback until Ory/Kratos is implemented. |
+| AUTH-004 | Accepted | Auth must stay behind ports and adapters while the backing implementation moves to Ory/Kratos. |
 | AUTH-005 | Accepted | SSO must be planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites. |
 | AUTH-006 | Accepted | Admin Console and builder surfaces must be session-backed. |
+| AUTH-007 | Accepted | OpenFGA is the durable runtime authorization model behind `PolicyEngine`; Ory Keto/Permissions is a related Zanzibar-style option but is not the selected runtime authorization engine. |
+| AUTH-008 | Accepted | Current Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that sync into OpenFGA relationship tuples during the authz implementation. |
+| AUTH-009 | Accepted | No permission builder is included in the current plan; future builder forms must project to OpenFGA models and relationship tuples and must not create a second permission language. |
 
 ### Data, Memory, and Artifacts
 | ID | Status | Requirement |
@@ -128,7 +132,7 @@ Build picoAI as a composable AI service platform: a system for defining, running
 - Physical microservice extraction beyond concrete deployment need.
 - Full workflow automation platform.
 - First-class recipe or template product surfaces; recipes/templates may remain handy scaffolding mechanisms, but their representation and UX are deferred.
-- Enterprise SSO and SCIM implementation, beyond contract shape and migration path.
+- Enterprise SSO and SCIM implementation, beyond the Ory/Kratos migration path and identity mapping contract.
 - Dedicated vector engine as the default before pgvector proves insufficient.
 - General task, calendar, or item data modeling from `docs/data-structure-ref/`.
 

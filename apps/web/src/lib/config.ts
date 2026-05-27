@@ -11,7 +11,21 @@ const proxyEnvSchema = z.object({
 });
 
 const authPolicyEnvSchema = z.object({
-  APP_SESSION_SECRET: z.string().min(1),
+  AUTH_PROVIDER: z.enum(["local", "ory-kratos"]).default("local"),
+  AUTH_LOCAL_MODE: z.enum(["development", "bootstrap", "emergency"]).default("development"),
+  ORY_KRATOS_PUBLIC_URL: z.string().url().optional(),
+  ORY_KRATOS_ADMIN_URL: z.string().url().optional(),
+  ORY_KRATOS_PROTOCOL: z.enum(["oidc", "saml"]).default("oidc"),
+  ORY_KRATOS_PROVIDER_ID: z.string().min(1).default("ory-kratos"),
+  ORY_KRATOS_BROWSER_LOGIN_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/login/browser"),
+  ORY_KRATOS_BROWSER_LOGOUT_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/logout/browser"),
+  APP_SESSION_SECRET: z.string().min(1).optional(),
   APP_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 8),
   APP_AUTH_ENABLED: z
     .enum(["true", "false"])
@@ -41,11 +55,25 @@ export function getAuthPolicyEnv() {
       ? undefined
       : "dev-session-secret-change-me";
 
-  return authPolicyEnvSchema.parse({
+  const parsed = authPolicyEnvSchema.parse({
+    AUTH_PROVIDER: process.env.AUTH_PROVIDER,
+    AUTH_LOCAL_MODE: process.env.AUTH_LOCAL_MODE,
+    ORY_KRATOS_PUBLIC_URL: process.env.ORY_KRATOS_PUBLIC_URL,
+    ORY_KRATOS_ADMIN_URL: process.env.ORY_KRATOS_ADMIN_URL,
+    ORY_KRATOS_PROTOCOL: process.env.ORY_KRATOS_PROTOCOL,
+    ORY_KRATOS_PROVIDER_ID: process.env.ORY_KRATOS_PROVIDER_ID,
+    ORY_KRATOS_BROWSER_LOGIN_PATH: process.env.ORY_KRATOS_BROWSER_LOGIN_PATH,
+    ORY_KRATOS_BROWSER_LOGOUT_PATH: process.env.ORY_KRATOS_BROWSER_LOGOUT_PATH,
     APP_SESSION_SECRET: process.env.APP_SESSION_SECRET ?? fallbackSessionSecret,
     APP_SESSION_TTL_SECONDS: process.env.APP_SESSION_TTL_SECONDS,
     APP_AUTH_ENABLED: process.env.APP_AUTH_ENABLED
   });
+
+  if (parsed.AUTH_PROVIDER === "ory-kratos" && !parsed.ORY_KRATOS_PUBLIC_URL) {
+    throw new Error("ORY_KRATOS_PUBLIC_URL is required when AUTH_PROVIDER=ory-kratos.");
+  }
+
+  return parsed;
 }
 
 export function getLocalIdentityUsers(): LocalIdentityUser[] {

@@ -45,3 +45,31 @@ output "artifact_bucket_name" {
 output "artifact_bucket_url" {
   value = google_storage_bucket.artifacts.url
 }
+
+output "kratos_enabled" {
+  value = var.enable_kratos
+}
+
+output "kratos_public_service_name" {
+  value = try(google_cloud_run_v2_service.kratos_public[0].name, null)
+}
+
+output "kratos_public_service_url" {
+  value = try(google_cloud_run_v2_service.kratos_public[0].uri, null)
+}
+
+output "kratos_admin_service_name" {
+  value = try(google_cloud_run_v2_service.kratos_admin[0].name, null)
+}
+
+output "kratos_admin_service_url" {
+  value = try(google_cloud_run_v2_service.kratos_admin[0].uri, null)
+}
+
+output "kratos_migrate_job_name" {
+  value = try(google_cloud_run_v2_job.kratos_migrate[0].name, null)
+}
+
+output "kratos_db_bootstrap_job_name" {
+  value = try(google_cloud_run_v2_job.kratos_db_bootstrap[0].name, null)
+}

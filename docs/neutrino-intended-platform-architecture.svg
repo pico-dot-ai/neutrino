@@ -181,7 +181,7 @@
 
   <rect class="chip" x="385" y="890" width="240" height="52"/>
   <text class="label" x="407" y="916">Identity + Session</text>
-  <text class="small" x="407" y="936">Local now, Ory/SSO later</text>
+  <text class="small" x="407" y="936">Ory/Kratos target, local fallback</text>
 
   <rect class="chip" x="650" y="890" width="240" height="52"/>
   <text class="label" x="672" y="916">VectorIndex</text>
@@ -193,7 +193,7 @@
 
   <rect class="chip" x="385" y="965" width="240" height="52"/>
   <text class="label" x="407" y="991">PolicyEngine</text>
-  <text class="small" x="407" y="1011">Local now, OpenFGA later</text>
+  <text class="small" x="407" y="1011">OpenFGA target, local fallback</text>
 
   <rect class="chip" x="650" y="965" width="240" height="52"/>
   <text class="label" x="672" y="991">Collaboration + Storage</text>

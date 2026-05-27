@@ -85,6 +85,10 @@ Set these in Vercel for the production web deployment:
 - `APP_SESSION_TTL_SECONDS`
 - `APP_IDENTITY_USERS_JSON`
 - `APP_AUTH_ENABLED`
+- `AUTH_PROVIDER`
+- `AUTH_LOCAL_MODE`
+- `ORY_KRATOS_PUBLIC_URL`
+- `ORY_KRATOS_ADMIN_URL`
 - `NEXT_PUBLIC_APP_NAME`
 
 `API_BASE_URL` must be the root Cloud Run service URL only, for example:
@@ -95,7 +99,14 @@ https://neutrino-api-xxxxx-uc.a.run.app
 
 Do not set `API_BASE_URL` to a Cloud Console URL, a revision URL, or a URL that already includes `/v1/chat`.
 
-Production web deployments must define `APP_IDENTITY_USERS_JSON`; the development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape:
+For Kratos-backed production auth:
+
+- `AUTH_PROVIDER=ory-kratos`
+- `AUTH_LOCAL_MODE=emergency` (fallback posture only)
+- `ORY_KRATOS_PUBLIC_URL=https://auth.pico.ai`
+- `ORY_KRATOS_ADMIN_URL=<internal-admin-url>`
+
+`APP_IDENTITY_USERS_JSON` is required only when `AUTH_PROVIDER=local`. The development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape for fallback mode:
 
 ```json
 [
@@ -124,10 +135,15 @@ If GitHub-to-Vercel auto deploy is configured, pushing or merging to the product
 
 - The product auth surface should be hosted under `auth.pico.ai`.
 - The production auth model must use a real login page, not HTTP Basic Auth.
-- The first implementation may use local username/password auth for development and early internal usage.
-- Auth must stay behind provider ports and adapters so the backing implementation can move to Ory Kratos.
+- Ory/Kratos is the accepted authentication and session-management target.
+- Ory/Kratos is implemented through Cloud Run services and migration/bootstrap jobs in this repo.
+- Local username/password auth remains only as a development, bootstrap, and emergency fallback under `AUTH_PROVIDER=local`.
+- Auth must stay behind provider ports and adapters while the backing implementation moves to Ory/Kratos.
 - SSO is planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites.
 - Session-backed access must protect Admin Console and builder surfaces.
+- OpenFGA is the accepted durable runtime authorization model behind `PolicyEngine`.
+- Ory Keto/Permissions is a related Zanzibar-style option, but it is not the selected runtime authorization engine.
+- Permission builder UX is deferred; future builder forms must project to OpenFGA models and relationship tuples.
 
 ### Google Secret Manager
 
@@ -137,6 +153,13 @@ The API requires these Secret Manager secrets in the target GCP project:
 - `API_PROXY_SHARED_SECRET`
 - `POSTGRES_APP_PASSWORD`
 - `CORE_DATABASE_URL`
+- `KRATOS_CONFIG_YAML`
+- `KRATOS_IDENTITY_SCHEMA_JSON`
+- `KRATOS_DSN`
+- `KRATOS_SECRETS_DEFAULT`
+- `KRATOS_SECRETS_COOKIE`
+- `KRATOS_OIDC_PROVIDERS_JSON`
+- `KRATOS_POSTGRES_PASSWORD`
 
 Create secrets when missing:
 
@@ -145,6 +168,13 @@ gcloud secrets create OPENAI_API_KEY --replication-policy=automatic
 gcloud secrets create API_PROXY_SHARED_SECRET --replication-policy=automatic
 gcloud secrets create POSTGRES_APP_PASSWORD --replication-policy=automatic
 gcloud secrets create CORE_DATABASE_URL --replication-policy=automatic
+gcloud secrets create KRATOS_CONFIG_YAML --replication-policy=automatic
+gcloud secrets create KRATOS_IDENTITY_SCHEMA_JSON --replication-policy=automatic
+gcloud secrets create KRATOS_DSN --replication-policy=automatic
+gcloud secrets create KRATOS_SECRETS_DEFAULT --replication-policy=automatic
+gcloud secrets create KRATOS_SECRETS_COOKIE --replication-policy=automatic
+gcloud secrets create KRATOS_OIDC_PROVIDERS_JSON --replication-policy=automatic
+gcloud secrets create KRATOS_POSTGRES_PASSWORD --replication-policy=automatic
 ```
 
 Add or rotate secret values:
@@ -158,12 +188,22 @@ printf '%s' '<postgres-connection-url>' | gcloud secrets versions add CORE_DATAB
 
 Terraform creates the `POSTGRES_APP_PASSWORD` secret metadata when self-managed Postgres is enabled, but the secret value must be added outside Terraform so it is not written into Terraform state.
 
+Kratos secret lifecycle from repo:
+
+```sh
+export PROJECT_ID=neutrino-491317
+scripts/kratos-secrets-upsert.sh
+scripts/kratos-validate-secrets.sh
+```
+
 ## Terraform Infrastructure
 
 [infra/terraform/cloud-run/main.tf](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/main.tf) is the source of truth for:
 
 - Cloud Run service settings.
 - Cloud Run migration job `${service_name}-core-migrate`.
+- Cloud Run migration and bootstrap jobs for Kratos (`kratos_migrate_job_name`, `kratos_db_bootstrap_job_name`).
+- Cloud Run services for Kratos public and admin endpoints.
 - Secret Manager bindings.
 - Runtime service account.
 - CPU, memory, timeout, scaling, startup probe, ingress, and invoker IAM settings.
@@ -211,6 +251,31 @@ terraform import google_cloud_run_v2_service.api projects/PROJECT_ID/locations/u
 
 Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run/terraform.tfvars.example) as the starting point for variables.
 
+Kratos rollout execution:
+
+```sh
+export PROJECT_ID=neutrino-491317
+export REGION=us-central1
+scripts/kratos-deploy-gcp.sh
+```
+
+This script applies Terraform, bootstraps the Kratos database/user on the existing Postgres VM, runs `kratos migrate sql`, and prints Kratos public/admin service URLs.
+
+Map `auth.pico.ai` to Kratos public service:
+
+```sh
+gcloud run domain-mappings create \
+  --service neutrino-kratos-public \
+  --domain auth.pico.ai \
+  --region us-central1 \
+  --project neutrino-491317
+
+gcloud run domain-mappings describe \
+  --domain auth.pico.ai \
+  --region us-central1 \
+  --project neutrino-491317
+```
+
 ## Cloud Run API Deployment
 
 The API container is built from the repository root, not from [apps/api](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api), because the Dockerfile copies workspace files from the monorepo root.
@@ -255,17 +320,17 @@ The Cloud Build service account must be able to build and push to Artifact Regis
 
 ## Data Platform
 
-Hosted Postgres is the durable system of record target. During the current prototype phase, the repo supports self-managed Postgres on a Terraform-managed Compute Engine VM.
+Hosted Postgres is the durable system of record target. The current deployment keeps one self-managed Postgres VM on Compute Engine, but it must run in private networking mode when Kratos public auth endpoints are exposed to the internet.
 
 Current self-managed modes:
 
 - `prototype`: lower-cost development mode. VM gets a public IP and ingress firewall for `5432` using `postgres_public_allowed_cidrs`; no Serverless VPC Access connector or Cloud NAT is provisioned.
-- `hardened`: higher-cost private mode. VM stays private, Cloud Run reaches it through Serverless VPC Access, and Cloud NAT is provisioned for VM bootstrap egress.
+- `hardened`: private mode. VM stays private, Cloud Run reaches it through Serverless VPC Access, and Cloud NAT is provisioned for VM bootstrap egress.
 
-To avoid hardened-mode charges during development, keep this in Terraform variables:
+For Kratos public internet exposure, use this Terraform setting:
 
 ```hcl
-postgres_deployment_mode = "prototype"
+postgres_deployment_mode = "hardened"
 ```
 
 The Postgres VM uses:
@@ -276,7 +341,7 @@ The Postgres VM uses:
 - password secret: `POSTGRES_APP_PASSWORD`
 - data disk: Terraform-managed persistent disk with destroy prevention
 - private host: Terraform output `postgres_internal_ip`
-- public host in prototype mode: Terraform output `postgres_public_ip`
+- public host in prototype mode: Terraform output `postgres_public_ip` (do not use for customer-facing auth deployments)
 
 The deployed `CORE_DATABASE_URL` shape is:
 
@@ -291,6 +356,9 @@ Required controls before relying on this database for production data:
 - Backup automation plus at least one restore verification run.
 - Migration promotion flow: staging migrate, validate, production backup, production migrate.
 - Documented rollback/runbook for failed or partial migrations.
+- Postgres `5432` is not publicly reachable from the internet.
+- `CORE_DATABASE_URL` and `KRATOS_DSN` resolve to private DB connectivity.
+- Kratos public endpoint may be internet-accessible; Kratos admin and Postgres must remain private.
 
 Keep runtime DB configuration fully environment-driven through `CORE_DATABASE_URL` or `DATABASE_URL`.
 

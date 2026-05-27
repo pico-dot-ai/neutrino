@@ -39,6 +39,14 @@ export function renderArchitectureMarkdown(contract) {
 
   const serviceModel = contract.serviceModel;
   const accessModel = contract.accessModel;
+  const authnTarget = accessModel.authnTarget;
+  const authzTarget = accessModel.authzTarget;
+  const authzMapping = authzTarget.mapping
+    .map(
+      (entry) =>
+        `- Neutrino \`${entry.neutrino}\` -> OpenFGA \`${entry.openFga}\`: ${entry.notes}`
+    )
+    .join("\n");
 
   return `# Architecture Canonical View
 
@@ -72,6 +80,20 @@ ${plainList(accessModel.productVocabulary)}
 
 ### Rules
 ${plainList(accessModel.rules)}
+
+### Authentication Target
+- Provider: \`${authnTarget.provider}\`
+- Role: ${authnTarget.role}
+- Local fallback: ${authnTarget.localFallbackRule}
+
+### Authorization Target
+- Provider: \`${authzTarget.provider}\`
+- Role: ${authzTarget.role}
+- Not selected: ${authzTarget.notSelected}
+- Builder rule: ${authzTarget.builderRule}
+
+### OpenFGA Mapping
+${authzMapping}
 
 ## Service Model
 ### User-Facing Vocabulary

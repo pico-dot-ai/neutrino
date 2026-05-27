@@ -18,12 +18,23 @@ locals {
   self_managed_postgres_enabled = var.enable_self_managed_postgres
   postgres_mode_hardened        = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "hardened"
   postgres_mode_prototype       = local.self_managed_postgres_enabled && var.postgres_deployment_mode == "prototype"
+  kratos_enabled                = var.enable_kratos
+  kratos_db_enabled             = local.kratos_enabled && local.self_managed_postgres_enabled
   artifact_bucket_name          = var.artifact_bucket_name == null ? "neutrino-artifacts-${var.project_id}" : var.artifact_bucket_name
 }
 
 resource "google_secret_manager_secret" "postgres_app_password" {
   count     = local.self_managed_postgres_enabled ? 1 : 0
   secret_id = var.postgres_password_secret_name
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret" "kratos_postgres_password" {
+  count     = local.kratos_db_enabled ? 1 : 0
+  secret_id = var.kratos_postgres_password_secret_name
 
   replication {
     auto {}
@@ -283,6 +294,8 @@ resource "google_cloud_run_v2_service" "api" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].scaling[0].min_instance_count,
+      scaling,
       client
     ]
   }
@@ -354,6 +367,383 @@ resource "google_cloud_run_v2_job" "core_migrate" {
   lifecycle {
     ignore_changes = [
       template[0].template[0].containers[0].image,
+      client
+    ]
+  }
+}
+
+resource "google_cloud_run_v2_job" "kratos_db_bootstrap" {
+  count    = local.kratos_db_enabled ? 1 : 0
+  name     = var.kratos_db_bootstrap_job_name
+  location = var.region
+  client   = "terraform"
+
+  template {
+    template {
+      service_account = var.runtime_service_account_email
+      timeout         = "600s"
+      max_retries     = 1
+
+      containers {
+        image = "postgres:17"
+        command = [
+          "/bin/bash"
+        ]
+        args = [
+          "-ceu",
+          <<-EOT
+            PGPASSWORD="$${POSTGRES_APP_PASSWORD}" psql "$${CORE_DATABASE_URL}" -v ON_ERROR_STOP=1 <<SQL
+            DO \$\$ BEGIN
+              IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${var.kratos_database_user}') THEN
+                CREATE ROLE ${var.kratos_database_user} LOGIN PASSWORD '$${KRATOS_POSTGRES_PASSWORD}';
+              ELSE
+                ALTER ROLE ${var.kratos_database_user} WITH LOGIN PASSWORD '$${KRATOS_POSTGRES_PASSWORD}';
+              END IF;
+            END \$\$;
+            SELECT 'CREATE DATABASE ${var.kratos_database_name} OWNER ${var.kratos_database_user}'
+            WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${var.kratos_database_name}')\\gexec
+            GRANT CONNECT ON DATABASE ${var.kratos_database_name} TO ${var.kratos_database_user};
+            SQL
+          EOT
+        ]
+
+        env {
+          name = "CORE_DATABASE_URL"
+          value_source {
+            secret_key_ref {
+              secret  = var.core_database_url_secret_name
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "POSTGRES_APP_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = var.postgres_password_secret_name
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name = "KRATOS_POSTGRES_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = var.kratos_postgres_password_secret_name
+              version = "latest"
+            }
+          }
+        }
+      }
+
+      dynamic "vpc_access" {
+        for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
+        content {
+          connector = vpc_access.value
+          egress    = "PRIVATE_RANGES_ONLY"
+        }
+      }
+    }
+  }
+}
+
+resource "google_cloud_run_v2_job" "kratos_migrate" {
+  count    = local.kratos_enabled ? 1 : 0
+  name     = var.kratos_migrate_job_name
+  location = var.region
+  client   = "terraform"
+
+  template {
+    template {
+      service_account = var.runtime_service_account_email
+      timeout         = "600s"
+      max_retries     = 1
+
+      containers {
+        image = var.kratos_image
+        command = [
+          "kratos"
+        ]
+        args = [
+          "migrate",
+          "sql",
+          "-e",
+          "--yes"
+        ]
+
+        env {
+          name = "DSN"
+          value_source {
+            secret_key_ref {
+              secret  = var.kratos_dsn_secret_name
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name  = "LOG_LEVEL"
+          value = var.kratos_log_level
+        }
+      }
+
+      dynamic "vpc_access" {
+        for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
+        content {
+          connector = vpc_access.value
+          egress    = "PRIVATE_RANGES_ONLY"
+        }
+      }
+    }
+  }
+}
+
+resource "google_cloud_run_v2_service" "kratos_public" {
+  count                = local.kratos_enabled ? 1 : 0
+  name                 = var.kratos_public_service_name
+  location             = var.region
+  ingress              = var.kratos_public_ingress
+  deletion_protection  = var.deletion_protection
+  invoker_iam_disabled = true
+  client               = "terraform"
+
+  template {
+    service_account = var.runtime_service_account_email
+    timeout         = "${var.timeout_seconds}s"
+
+    containers {
+      image = var.kratos_image
+      command = [
+        "/bin/sh"
+      ]
+      args = [
+        "-ceu",
+        "kratos serve public --config /etc/kratos/kratos.yml --watch-courier"
+      ]
+
+      env {
+        name = "DSN"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_dsn_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRETS_DEFAULT"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_secrets_default_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRETS_COOKIE"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_secrets_cookie_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "OIDC_PROVIDER_CONFIG"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_oidc_providers_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "LOG_LEVEL"
+        value = var.kratos_log_level
+      }
+      env {
+        name  = "KRATOS_REVISION_MARKER"
+        value = var.kratos_revision_marker
+      }
+
+      ports {
+        container_port = 8080
+      }
+
+      volume_mounts {
+        name       = "kratos-config"
+        mount_path = "/etc/kratos"
+      }
+      volume_mounts {
+        name       = "kratos-identity-schema"
+        mount_path = "/etc/kratos/schemas"
+      }
+
+      resources {
+        limits = {
+          cpu    = "1000m"
+          memory = "512Mi"
+        }
+      }
+    }
+
+    volumes {
+      name = "kratos-config"
+      secret {
+        secret = var.kratos_config_secret_name
+        items {
+          path    = "kratos.yml"
+          version = "latest"
+        }
+      }
+    }
+    volumes {
+      name = "kratos-identity-schema"
+      secret {
+        secret = var.kratos_identity_schema_secret_name
+        items {
+          path    = "identity.schema.json"
+          version = "latest"
+        }
+      }
+    }
+
+    dynamic "vpc_access" {
+      for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
+      content {
+        connector = vpc_access.value
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].scaling[0].min_instance_count,
+      scaling,
+      client
+    ]
+  }
+}
+
+resource "google_cloud_run_v2_service" "kratos_admin" {
+  count                = local.kratos_enabled ? 1 : 0
+  name                 = var.kratos_admin_service_name
+  location             = var.region
+  ingress              = var.kratos_admin_ingress
+  deletion_protection  = var.deletion_protection
+  invoker_iam_disabled = false
+  client               = "terraform"
+
+  template {
+    service_account = var.runtime_service_account_email
+    timeout         = "${var.timeout_seconds}s"
+
+    containers {
+      image = var.kratos_image
+      command = [
+        "/bin/sh"
+      ]
+      args = [
+        "-ceu",
+        "kratos serve admin --config /etc/kratos/kratos.yml"
+      ]
+
+      env {
+        name = "DSN"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_dsn_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRETS_DEFAULT"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_secrets_default_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRETS_COOKIE"
+        value_source {
+          secret_key_ref {
+            secret  = var.kratos_secrets_cookie_secret_name
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "LOG_LEVEL"
+        value = var.kratos_log_level
+      }
+      env {
+        name  = "KRATOS_REVISION_MARKER"
+        value = var.kratos_revision_marker
+      }
+
+      ports {
+        container_port = 8081
+      }
+
+      volume_mounts {
+        name       = "kratos-config"
+        mount_path = "/etc/kratos"
+      }
+      volume_mounts {
+        name       = "kratos-identity-schema"
+        mount_path = "/etc/kratos/schemas"
+      }
+    }
+
+    volumes {
+      name = "kratos-config"
+      secret {
+        secret = var.kratos_config_secret_name
+        items {
+          path    = "kratos.yml"
+          version = "latest"
+        }
+      }
+    }
+    volumes {
+      name = "kratos-identity-schema"
+      secret {
+        secret = var.kratos_identity_schema_secret_name
+        items {
+          path    = "identity.schema.json"
+          version = "latest"
+        }
+      }
+    }
+
+    dynamic "vpc_access" {
+      for_each = local.postgres_mode_hardened ? [google_vpc_access_connector.serverless[0].id] : []
+      content {
+        connector = vpc_access.value
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].scaling[0].min_instance_count,
+      scaling,
       client
     ]
   }

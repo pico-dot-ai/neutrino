@@ -1,7 +1,7 @@
 {
   "name": "neutrino-architecture-contract",
-  "version": "1.7.0",
-  "lastUpdated": "2026-05-24",
+  "version": "1.8.0",
+  "lastUpdated": "2026-05-25",
   "purpose": "Define architecture in one place and enforce implementation conformance for a composable AI service platform.",
   "principles": [
     "All infrastructure integrations must be implemented as adapters behind stable ports.",
@@ -17,7 +17,10 @@
     "Postgres is the durable system of record for core state; vector and realtime systems can be swapped.",
     "pgvector is the first vector implementation, not a permanent platform assumption.",
     "ObjectStorage owns artifact bytes; Postgres owns artifact metadata, permissions, and references.",
-    "The initial auth service must provide a real login surface and remain swappable toward Ory Kratos and SSO.",
+    "Ory/Kratos is the accepted authentication and session-management target; local username/password auth remains only a bootstrap and development fallback.",
+    "OpenFGA is the accepted durable runtime authorization model behind PolicyEngine.",
+    "Ory Keto/Permissions is a related Zanzibar-style authorization option, but it is not the selected runtime authorization engine.",
+    "Permission builder surfaces are deferred; future builder forms must project to OpenFGA authorization models and relationship tuples instead of defining a second permission language.",
     "Deployment must remain push-to-deploy through CI workflows and IaC-managed environments.",
     "Terraform-managed infrastructure must use a shared remote state backend instead of machine-local state.",
     "The frontend design system is mandatory and built on shared shadcn/ui-based primitives and tokens."
@@ -48,8 +51,48 @@
       "Do not model member, team_member, role, or permission_set as first-cut schema primitives.",
       "Represent team and org structure through groups plus grants unless a concrete use case proves a separate table is needed.",
       "Support SSO through identity records linked to actors, not by special-casing users in product schema.",
+      "Map Ory/Kratos identities to Neutrino identities and actors; do not use mutable email addresses as durable actor identifiers.",
+      "Use OpenFGA as the durable authorization decision engine; Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that sync into OpenFGA relationship tuples.",
       "Visibility governs app, action, object, view, and service exposure: internal, public, or explicitly allowed workspaces/orgs/groups/actors."
-    ]
+    ],
+    "authnTarget": {
+      "provider": "Ory/Kratos",
+      "role": "Authentication and browser/session lifecycle authority.",
+      "localFallbackRule": "Local username/password is allowed only for development, bootstrap, and emergency fallback until Ory/Kratos is implemented."
+    },
+    "authzTarget": {
+      "provider": "OpenFGA",
+      "role": "Durable runtime authorization model and permission-check engine behind PolicyEngine.",
+      "notSelected": "Ory Keto/Permissions is documented as a related Zanzibar-style option, but runtime checks target OpenFGA.",
+      "builderRule": "No permission builder is included in the current plan. Future builder forms must compile to OpenFGA models and relationship tuples and remain inspectable.",
+      "mapping": [
+        {
+          "neutrino": "actor",
+          "openFga": "subject user:<actorId>",
+          "notes": "Actor IDs are durable Neutrino principals mapped from Ory/Kratos identities or service credentials."
+        },
+        {
+          "neutrino": "group",
+          "openFga": "type group with member relation",
+          "notes": "Group membership is represented as OpenFGA relationships, not as hardcoded roles."
+        },
+        {
+          "neutrino": "workspace, project, app, action, service, artifact, memory",
+          "openFga": "object types workspace, project, app, action, service, artifact, memory",
+          "notes": "Object IDs must include enough scope to avoid cross-workspace collisions."
+        },
+        {
+          "neutrino": "can_manage, can_use, can_invoke, can_read",
+          "openFga": "relations or computed permissions on the relevant object types",
+          "notes": "Initial relations cover control-plane management, app/service use, action invocation, and artifact/memory read access."
+        },
+        {
+          "neutrino": "grant records",
+          "openFga": "relationship tuples",
+          "notes": "Current grants become source inputs and audit metadata that sync into OpenFGA tuples during the authz implementation."
+        }
+      ]
+    }
   },
   "serviceModel": {
     "userFacingVocabulary": [
@@ -293,7 +336,7 @@
       "requiredAdapters": [
         "packages/adapters/identity/local-identity-adapter.ts"
       ],
-      "swapRule": "Authentication providers are swappable behind IdentityProvider, with Ory Kratos and SSO as later adapter targets."
+      "swapRule": "Ory/Kratos is the accepted authentication provider target behind IdentityProvider; the local adapter is retained for development and bootstrap fallback."
     },
     {
       "id": "session-manager",
@@ -302,7 +345,7 @@
       "requiredAdapters": [
         "packages/adapters/session/signed-cookie-session-adapter.ts"
       ],
-      "swapRule": "Session issuance and validation remain provider-agnostic through SessionManager."
+      "swapRule": "Session issuance and validation remain provider-agnostic through SessionManager while the implementation migrates to Ory/Kratos-managed browser sessions."
     },
     {
       "id": "policy-engine",
@@ -311,7 +354,7 @@
       "requiredAdapters": [
         "packages/adapters/policy/local-policy-engine-adapter.ts"
       ],
-      "swapRule": "Policy decisions are isolated behind PolicyEngine, with OpenFGA as a later adapter target."
+      "swapRule": "Policy decisions are isolated behind PolicyEngine, with OpenFGA as the accepted durable runtime authorization engine and local policy retained for tests/bootstrap fallback."
     },
     {
       "id": "oauth-client-catalog",

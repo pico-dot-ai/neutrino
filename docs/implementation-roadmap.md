@@ -12,6 +12,7 @@ Related sources:
 - Requirements baseline: `docs/requirements-baseline.md`
 - Canonical architecture contract: `architecture/contract.json`
 - Generated architecture view: `docs/architecture-canonical.md`
+- Auth baseline and OpenFGA mapping: `docs/auth-baseline.md`
 - Platform/deployment assumptions: `docs/platform-baseline.md`, `docs/deployment-baseline.md`
 
 Out of scope for this phase:
@@ -32,7 +33,7 @@ Out of scope for this phase:
 | 2 | Core Persistence (Postgres canonical) | Done | `@neutrino/core` repositories + migrations in place, GCP Postgres provisioning + secret wiring validated, backup/restore drill and migration promotion flow validated and documented |
 | 3 | Infrastructure Ports and Adapters | Done | baseline adapters wired for model, embedding/vector, object storage, identity/session, policy |
 | 4 | Manifest Registry, Catalog, Bindings, and Manifests | In Progress | scoped manifest registry exists, manifests validate, resources register, bindings resolve runtime plan |
-| 5 | Auth and Data Platform | In Progress | login/session flow works, memory/artifact/vector persistence validated |
+| 5 | Auth and Data Platform | In Progress | Ory/Kratos authn/session migration planned and implemented, OpenFGA authz model planned separately, memory/artifact/vector persistence validated |
 | 6 | Dev Agent Runtime | In Progress | end-to-end runtime path persists run, trace, usage/cost, memory access, eval output |
 | 7 | Service Reuse and Control-Plane UI | In Progress | cross-app service reuse/authorization validated and surfaced in UI |
 
@@ -96,15 +97,15 @@ Current notes:
 - Runtime secret wiring and migration execution hooks are now defined in deployment IaC (`CORE_DATABASE_URL` secret binding + Cloud Run migration job + Cloud Build execution before service rollout).
 - Postgres-backed repositories are implemented behind the core ports for manifest registry, access graph, bindings, runs, traces, usage, memory, and artifact metadata.
 - `npm run test:core:postgres` validates the durable repository vertical against `CORE_TEST_DATABASE_URL`.
-- GCP Postgres infrastructure has been applied and validated in prototype mode: Terraform output succeeds, Cloud Run migration job completes, and `/readyz` returns HTTP 200.
+- GCP Postgres infrastructure has been applied and validated in both prototype and hardened profiles: Terraform output succeeds, Cloud Run migration job completes, and `/readyz` returns HTTP 200.
 - Self-managed Postgres now has explicit Terraform mode profiles:
   - `prototype` (lowest-cost dev): public-IP VM + CIDR-scoped ingress, no Serverless VPC connector/NAT.
   - `hardened` (private): private VM + Serverless VPC connector + Cloud NAT + private ingress path.
 - Backup/restore + migration promotion drill validated on 2026-05-24 UTC using `npm run phase2:drill` against dedicated non-prod databases (`platform_phase2_stage`, `platform_phase2_restore`) with successful probe restore, zero pending migrations on both DBs, and backup artifact `/tmp/platform_phase2_stage-20260524T165808Z.dump`.
 - Live runtime readiness remains healthy after migration validation: `GET /readyz` on `https://neutrino-api-jeo3uupuxa-uc.a.run.app` returned HTTP 200 (`{"status":"ready"}`) on 2026-05-24 UTC.
 
-### Phase 2 Prototype Profile (Temporary)
-- During concept validation, use self-managed Postgres + pgvector for staging/prod-like environments.
+### Phase 2 Postgres Profile (Temporary)
+- During concept validation, use one self-managed Postgres + pgvector VM for staging/prod-like environments.
 - Keep the boundary portable:
   - runtime uses only `CORE_DATABASE_URL`/`DATABASE_URL`
   - no hardcoded provider-specific host/user naming in application code
@@ -113,12 +114,17 @@ Current notes:
   - In `prototype` mode, Cloud Run connects to the VM public IP through the CIDR-scoped firewall; no Serverless VPC Access connector or Cloud NAT is provisioned.
   - In `hardened` mode, Cloud Run connects over Serverless VPC Access and `CORE_DATABASE_URL` uses the VM private IP from Terraform output `postgres_internal_ip`.
   - `CORE_DATABASE_URL` uses `postgres_public_ip` in prototype mode and `postgres_internal_ip` in hardened mode.
+- Current auth-platform target:
+  - Keep one Postgres VM.
+  - Expose Kratos public HTTP API to the internet.
+  - Keep Postgres and Kratos admin private.
+  - Use `hardened` mode before customer exposure.
 - Minimum required controls before calling Phase 2 complete:
   - separate staging and production databases
   - automated backup policy and at least one verified restore drill
   - migration promotion path: staging migrate -> validate -> production backup -> production migrate
   - documented rollback/recovery runbook for partial migration failures
-- Exit criterion from prototype profile:
+- Exit criterion from temporary shared-VM profile:
   - retain ability to switch to managed Postgres later without application-layer rewrites.
 
 ### Phase 3: Infrastructure Ports and Adapters
@@ -200,18 +206,24 @@ Status: `In Progress`
 
 Target outcomes:
 - Session-backed auth with real login page (no HTTP Basic Auth).
-- Local username/password implementation available.
-- Migration path preserved for Ory Kratos and SSO.
+- Ory/Kratos becomes the authentication and session-management implementation target.
+- Local username/password implementation remains only as development, bootstrap, and emergency fallback until Ory/Kratos is implemented.
+- SSO migration path remains behind identity, authenticator, directory, and policy provider ports.
+- OpenFGA becomes the accepted durable runtime authorization model behind `PolicyEngine`; Ory Keto/Permissions is a related Zanzibar-style option, not the selected runtime authz engine.
+- No permission builder is included in the current plan; future builder forms must project to OpenFGA models and relationship tuples.
 - Postgres + pgvector in first implementation slice.
 - Artifact bytes in `ObjectStorage`; metadata in repository.
 - Canonical memory in repository with searchable indexing through memory index.
 
 Validation:
-- Login/session tests pass
+- Ory/Kratos authn/session plan and implementation tests pass when that slice starts.
+- OpenFGA authorization model is documented in `docs/auth-baseline.md` before authz implementation starts.
 - Memory/artifact/vector tests pass
 
 Current notes:
 - Login/session/admin surfaces exist; continue hardening and coverage.
+- Accepted implementation order is: Ory/Kratos authn/session first, OpenFGA authz second.
+- Current Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that will sync into OpenFGA relationship tuples during authz implementation.
 - Postgres-backed core repositories are implemented for manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifact metadata.
 - `CORE_DATABASE_URL` or explicit repository configuration selects durable Postgres repositories; in-memory repositories remain the fallback for local/bootstrap use.
 - `npm run test:core:postgres` loads `CORE_TEST_DATABASE_URL`, migrates the test database, and runs the Postgres repository integration test.
@@ -273,14 +285,16 @@ Current notes:
 - Web test coverage now validates section routing, structured registration flows, JSON escape hatch flow, and invoke workflow behavior against existing API contracts.
 
 ## Open-Source Evaluations (Post-MVP or Conditional)
-- Identity: Ory Kratos (and later SSO provider integration)
-- Authorization: OpenFGA
+- Ory Keto/Permissions remains a related Zanzibar-style authz option for future comparison, but OpenFGA is the accepted durable runtime authz model.
+- Later SSO provider integration beyond Ory/Kratos identity/session migration remains conditional.
 - Durable workflows: Temporal or Inngest
 - Memory backends: Mem0, Zep/Graphiti, Letta
 - Vector backend alternatives: Qdrant or Pinecone
 
 ## Immediate Next Actions
-1. Execute deferred production-hardening backlog: staging promotion flow, migration/rollback runbook, and backup/restore drill for the Postgres VM.
+1. Plan and implement Ory/Kratos authentication and session migration (`THU-22`).
+2. Plan OpenFGA durable authorization model implementation using `docs/auth-baseline.md` as the mapping baseline (`THU-30`).
+3. Complete pre-customer DB hardening gate for shared Postgres VM: private-only DB networking, staged migration promotion/runbook verification, and backup/restore evidence.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

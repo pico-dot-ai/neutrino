@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@neutrino/ui";
 import { LoginForm } from "@/components/auth/login-form";
+import { HostedLoginFlow } from "@/components/auth/hosted-login-flow";
 import { FrostedHeader } from "@/components/design/frosted-header";
 import { getAuthPolicyEnv } from "@/lib/config";
 import styles from "./login.module.css";
@@ -9,6 +10,7 @@ export default async function LoginPage(props: {
   searchParams: Promise<{
     next?: string;
     error?: string;
+    flow?: string;
   }>;
 }) {
   const searchParams = await props.searchParams;
@@ -16,6 +18,7 @@ export default async function LoginPage(props: {
   const nextPath =
     searchParams.next && searchParams.next.startsWith("/") ? searchParams.next : "/admin";
   const loginStartHref = `/api/auth/login/start?next=${encodeURIComponent(nextPath)}`;
+  const flowId = searchParams.flow;
 
   return (
     <main className={styles.shell}>
@@ -53,6 +56,16 @@ export default async function LoginPage(props: {
           }
           nextPath={searchParams.next}
         />
+      ) : authEnv.ORY_KRATOS_PUBLIC_URL && flowId ? (
+        <div className="mx-auto w-full max-w-lg rounded-[1.25rem] border border-white/70 bg-white/70 p-8 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
+          <div className="space-y-4 text-center">
+            <h1 className="text-2xl font-normal text-foreground">Sign in</h1>
+            <p className="text-sm text-muted-foreground">
+              Choose an identity provider to continue.
+            </p>
+            <HostedLoginFlow kratosPublicUrl={authEnv.ORY_KRATOS_PUBLIC_URL} flowId={flowId} />
+          </div>
+        </div>
       ) : (
         <div className="mx-auto w-full max-w-lg rounded-[1.25rem] border border-white/70 bg-white/70 p-8 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
           <div className="space-y-4 text-center">

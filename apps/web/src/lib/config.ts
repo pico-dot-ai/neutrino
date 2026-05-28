@@ -79,18 +79,7 @@ export function getAuthPolicyEnv() {
 export function getLocalIdentityUsers(): LocalIdentityUser[] {
   const raw = process.env.APP_IDENTITY_USERS_JSON;
   if (!raw) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Missing APP_IDENTITY_USERS_JSON.");
-    }
-
-    return [
-      {
-        username: "admin",
-        password: "admin",
-        email: "admin@pico.ai",
-        groups: ["picoai", "app_admin", "org_admin"]
-      }
-    ];
+    throw new Error("Missing APP_IDENTITY_USERS_JSON.");
   }
 
   const parsed = JSON.parse(raw) as unknown;

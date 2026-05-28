@@ -60,4 +60,25 @@ describe("POST /api/auth/login", () => {
       })
     );
   });
+
+  it("fails local login when APP_IDENTITY_USERS_JSON is missing", async () => {
+    process.env.AUTH_PROVIDER = "local";
+    process.env.AUTH_LOCAL_MODE = "emergency";
+    process.env.APP_SESSION_SECRET = "test-secret";
+
+    const response = await POST(
+      new Request("http://127.0.0.1:3000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "admin" })
+      })
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({
+        error: "Missing APP_IDENTITY_USERS_JSON."
+      })
+    );
+  });
 });

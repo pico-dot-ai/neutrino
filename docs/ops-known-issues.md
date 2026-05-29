@@ -54,14 +54,14 @@ When adding a new issue, use:
 - Prevention: For deployable Node bundles, avoid runtime imports of local workspace TS source unless the package is separately built and shipped in the runtime image.
 - Verification: `apps/api/dist/server.js` contains inlined platform-gateway/adapters and no runtime `@neutrino/*` imports; Cloud Run revision becomes ready.
 
-## ISSUE-004: Production login failure due to missing identity user list
+## ISSUE-004: Production login failure due to local auth fallback misconfiguration
 - Date first seen: 2026-05-18
 - Surfaces: Vercel web app auth flow
 - Symptom: Login returns `Missing APP_IDENTITY_USERS_JSON`.
-- Root cause: Production path intentionally disables local fallback credentials and requires explicit identity user configuration.
-- Fix: Set `APP_IDENTITY_USERS_JSON` in Vercel production with at least one `app_admin` user. Set `APP_SESSION_SECRET` as a strong random value.
-- Prevention: Treat Vercel env vars as deployment config managed outside git; validate required auth vars before promoting to production.
-- Verification: `/login` can authenticate configured admin user in production.
+- Root cause: Runtime was configured for local auth fallback instead of Kratos-primary auth flow.
+- Fix: Set `AUTH_PROVIDER=ory-kratos` for production. Keep `APP_IDENTITY_USERS_JSON` only for explicit local fallback mode (`AUTH_PROVIDER=local`).
+- Prevention: Treat Kratos as production authn/session authority and reserve local JSON users for development/bootstrap/emergency fallback only.
+- Verification: `/login` redirects into Kratos flow and production auth succeeds without requiring `APP_IDENTITY_USERS_JSON`.
 
 ## ISSUE-005: Migration job applies zero SQL files due to wrong image migration path
 - Date first seen: 2026-05-24

@@ -106,7 +106,13 @@ For Kratos-backed production auth:
 - `ORY_KRATOS_PUBLIC_URL=https://auth.pico.ai`
 - `ORY_KRATOS_ADMIN_URL=<internal-admin-url>`
 
-`APP_IDENTITY_USERS_JSON` is required only when `AUTH_PROVIDER=local`. The development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape for fallback mode:
+Kratos identity data policy for this repo:
+
+- `traits` are profile/authn data and are user-editable; do not use `traits.groups` as app authorization truth.
+- Temporary Neutrino app groups must be written only to admin-managed `metadata_public.groups` until OpenFGA is live.
+- Temporary groups must remain non-sensitive role labels only (for example `picoai`, `app_admin`, `app_developer`).
+
+`APP_IDENTITY_USERS_JSON` is required only when `AUTH_PROVIDER=local`. The development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape only for local fallback mode:
 
 ```json
 [
@@ -144,6 +150,15 @@ If GitHub-to-Vercel auto deploy is configured, pushing or merging to the product
 - OpenFGA is the accepted durable runtime authorization model behind `PolicyEngine`.
 - Ory Keto/Permissions is a related Zanzibar-style option, but it is not the selected runtime authorization engine.
 - Permission builder UX is deferred; future builder forms must project to OpenFGA models and relationship tuples.
+
+Temporary Kratos metadata group assignment operation:
+
+```sh
+scripts/kratos-set-public-metadata-groups.sh --identity-id <kratos-identity-id> --groups picoai,app_admin
+scripts/kratos-set-public-metadata-groups.sh --identity-id <kratos-identity-id> --groups picoai,app_developer
+```
+
+This operation writes only `metadata_public.groups` through Kratos Admin API and rejects any `traits.groups` write attempts.
 
 ### Google Secret Manager
 
@@ -478,14 +493,15 @@ Before promoting a web deployment:
 - Confirm Vercel production env vars are present.
 - Confirm `API_BASE_URL` points to the root Cloud Run service URL.
 - Confirm `API_PROXY_SHARED_SECRET` matches the Cloud Run secret value.
-- Confirm `APP_IDENTITY_USERS_JSON` contains at least one `app_admin`.
+- Confirm `AUTH_PROVIDER=ory-kratos` for production.
+- Confirm temporary app groups, when needed, are managed in Kratos `metadata_public.groups` via admin-only operations.
 - Confirm `APP_SESSION_SECRET` is set and strong.
 
 Production verification:
 
 - Vercel deployment is marked `Ready`.
 - `/login` renders.
-- Configured admin user can log in.
+- Kratos admin user can log in.
 - Authenticated admin routes load.
 - The chat path reaches Cloud Run through the Next.js API proxy.
 

@@ -27,12 +27,6 @@
         "username": {
           "type": "string",
           "minLength": 2
-        },
-        "groups": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": ["email"],

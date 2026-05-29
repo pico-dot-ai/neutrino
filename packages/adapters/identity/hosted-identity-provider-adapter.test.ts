@@ -78,4 +78,68 @@ describe("HostedIdentityProviderAdapter", () => {
       adapter.validateBrowserSession({ cookieHeader: "ory_kratos_session=abc" })
     ).resolves.toBeNull();
   });
+
+  it("maps groups from metadata_public.groups", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        id: "session_456",
+        active: true,
+        authenticated_at: "2026-05-25T00:00:00.000Z",
+        expires_at: "2026-05-25T08:00:00.000Z",
+        identity: {
+          id: "identity_456",
+          traits: {
+            email: "dev@pico.ai",
+            username: "dev-user"
+          },
+          metadata_public: {
+            groups: ["picoai", "app_developer"]
+          }
+        }
+      })
+    );
+
+    const adapter = new HostedIdentityProviderAdapter({
+      protocol: "oidc",
+      kratosPublicUrl: "https://kratos.example.com",
+      fetchImpl
+    });
+
+    const session = await adapter.validateBrowserSession({
+      cookieHeader: "ory_kratos_session=def"
+    });
+
+    expect(session?.actor.groups).toEqual(["picoai", "app_developer"]);
+  });
+
+  it("ignores traits.groups because traits are user-editable", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        id: "session_789",
+        active: true,
+        authenticated_at: "2026-05-25T00:00:00.000Z",
+        expires_at: "2026-05-25T08:00:00.000Z",
+        identity: {
+          id: "identity_789",
+          traits: {
+            email: "dev2@pico.ai",
+            username: "dev2",
+            groups: ["user_supplied_group"]
+          }
+        }
+      })
+    );
+
+    const adapter = new HostedIdentityProviderAdapter({
+      protocol: "oidc",
+      kratosPublicUrl: "https://kratos.example.com",
+      fetchImpl
+    });
+
+    const session = await adapter.validateBrowserSession({
+      cookieHeader: "ory_kratos_session=ghi"
+    });
+
+    expect(session?.actor.groups).toEqual([]);
+  });
 });

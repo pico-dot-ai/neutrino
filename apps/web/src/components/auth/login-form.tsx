@@ -17,6 +17,31 @@ import { Button, Input } from "@neutrino/ui";
 type AuthMethod = "password" | "google" | "apple" | "github" | "sso";
 type AuthStep = "start" | "email" | "password" | "provider";
 
+type KratosUiNode = {
+  attributes?: {
+    name?: string;
+    type?: string;
+    value?: string;
+    required?: boolean;
+    disabled?: boolean;
+  };
+  meta?: {
+    label?: {
+      text?: string;
+    };
+  };
+  group?: string;
+};
+
+type KratosLoginFlow = {
+  ui?: {
+    action?: string;
+    method?: string;
+    nodes?: KratosUiNode[];
+    messages?: Array<{ text?: string }>;
+  };
+};
+
 const authMethods: Array<{
   id: Exclude<AuthMethod, "password">;
   label: string;
@@ -81,6 +106,10 @@ const methodCopy: Record<AuthMethod, {
 export function LoginForm(props: {
   nextPath?: string;
   initialError?: string;
+  kratosFlow?: {
+    flowId: string;
+    kratosPublicUrl: string;
+  };
 }) {
   const router = useRouter();
   const [username, setUsername] = React.useState("");
@@ -90,7 +119,81 @@ export function LoginForm(props: {
   const [step, setStep] = React.useState<AuthStep>("start");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [kratosFlow, setKratosFlow] = React.useState<KratosLoginFlow | null>(null);
+  const [kratosError, setKratosError] = React.useState<string | null>(null);
   const activeCopy = methodCopy[method];
+  const isKratosMode = Boolean(props.kratosFlow);
+
+  React.useEffect(() => {
+    const flowConfig = props.kratosFlow;
+    if (!flowConfig) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const loadFlow = async () => {
+      try {
+        const url = new URL("/self-service/login/flows", flowConfig.kratosPublicUrl);
+        url.searchParams.set("id", flowConfig.flowId);
+
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          credentials: "include",
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          setKratosError("Unable to load sign-in session. Please refresh and try again.");
+          return;
+        }
+
+        setKratosFlow((await response.json()) as KratosLoginFlow);
+      } catch {
+        if (!controller.signal.aborted) {
+          setKratosError("Unable to load sign-in session. Please refresh and try again.");
+        }
+      }
+    };
+
+    void loadFlow();
+
+    return () => controller.abort();
+  }, [props.kratosFlow]);
+
+  const kratosNodes = kratosFlow?.ui?.nodes ?? [];
+  const kratosHiddenInputs = kratosNodes.filter(
+    (node) => node.attributes?.type === "hidden" && node.attributes.name
+  );
+  const kratosPasswordSubmit = kratosNodes.find(
+    (node) =>
+      node.group === "password" &&
+      node.attributes?.type === "submit" &&
+      node.attributes?.name &&
+      node.attributes?.value
+  );
+  const kratosOidcButtons = kratosNodes.filter(
+    (node) =>
+      node.group === "oidc" &&
+      node.attributes?.type === "submit" &&
+      node.attributes.name &&
+      node.attributes.value
+  );
+  const kratosAction = kratosFlow?.ui?.action;
+  const kratosMethod = (kratosFlow?.ui?.method ?? "POST").toUpperCase();
+  const kratosMessage = kratosFlow?.ui?.messages?.[0]?.text;
+  const canSubmitKratosPassword = Boolean(kratosAction && kratosPasswordSubmit);
+
+  function renderKratosHiddenInputs(prefix: string) {
+    return kratosHiddenInputs.map((node) => (
+      <input
+        key={`${prefix}-${node.attributes?.name}-${node.attributes?.value ?? ""}`}
+        name={node.attributes?.name}
+        type="hidden"
+        value={node.attributes?.value ?? ""}
+      />
+    ));
+  }
 
   function selectPassword() {
     setError(null);
@@ -117,6 +220,10 @@ export function LoginForm(props: {
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (isKratosMode) {
+      return;
+    }
+
     event.preventDefault();
     setError(null);
     setIsSubmitting(true);
@@ -173,7 +280,13 @@ export function LoginForm(props: {
                 Welcome to picoAI
               </h1>
 
-              <form className="mt-3 space-y-3 text-left" onSubmit={handleSubmit}>
+              <form
+                action={isKratosMode ? kratosAction : undefined}
+                className="mt-3 space-y-3 text-left"
+                method={isKratosMode ? kratosMethod : undefined}
+                onSubmit={isKratosMode ? undefined : handleSubmit}
+              >
+                {isKratosMode ? renderKratosHiddenInputs("start") : null}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-3">
                     <label className="text-sm font-medium text-foreground" htmlFor="start-username">
@@ -188,6 +301,7 @@ export function LoginForm(props: {
                     autoComplete="username"
                     className="h-10 rounded-xl bg-white text-sm shadow-sm"
                     id="start-username"
+                    name={isKratosMode ? "identifier" : undefined}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="you@example.com"
                     required
@@ -209,6 +323,7 @@ export function LoginForm(props: {
                     autoComplete="current-password"
                     className="h-10 rounded-xl bg-white text-sm shadow-sm"
                     id="start-password"
+                    name={isKratosMode ? "password" : undefined}
                     onChange={(event) => setPassword(event.target.value)}
                     required
                     type="password"
@@ -225,46 +340,76 @@ export function LoginForm(props: {
                   Remember me on this device
                 </label>
 
-                {error ? (
+                {kratosError || kratosMessage || error ? (
                   <p className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                    {error}
+                    {kratosError ?? kratosMessage ?? error}
                   </p>
                 ) : null}
 
-                <Button className="h-10 w-full rounded-xl text-sm shadow-sm" disabled={isSubmitting} type="submit">
+                <Button
+                  className="h-10 w-full rounded-xl text-sm shadow-sm"
+                  disabled={isKratosMode ? !canSubmitKratosPassword : isSubmitting}
+                  name={isKratosMode ? kratosPasswordSubmit?.attributes?.name : undefined}
+                  type="submit"
+                  value={isKratosMode ? kratosPasswordSubmit?.attributes?.value : undefined}
+                >
                   {isSubmitting ? "Signing in..." : "Sign in"}
                 </Button>
               </form>
 
-              <div className="my-4 flex items-center gap-3 text-sm text-muted-foreground">
-                <div className="h-px flex-1 bg-border" />
-                <span>or continue with</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
+              {!isKratosMode || kratosOidcButtons.length > 0 ? (
+                <div className="my-4 flex items-center gap-3 text-sm text-muted-foreground">
+                  <div className="h-px flex-1 bg-border" />
+                  <span>or continue with</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+              ) : null}
 
-              <div className="space-y-2.5">
-                {authMethods.map((option) => (
-                  <button
-                    className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
-                    key={option.id}
-                    onClick={() => selectProvider(option.id)}
-                    type="button"
-                  >
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                      {option.icon ? (
-                        <span className="grid grid-cols-[20px_auto] items-center gap-3">
-                          <span className={`grid w-5 place-items-center ${option.iconContainerClassName ?? "h-5"}`}>
-                            {option.icon}
+              {!isKratosMode ? (
+                <div className="space-y-2.5">
+                  {authMethods.map((option) => (
+                    <button
+                      className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
+                      key={option.id}
+                      onClick={() => selectProvider(option.id)}
+                      type="button"
+                    >
+                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        {option.icon ? (
+                          <span className="grid grid-cols-[20px_auto] items-center gap-3">
+                            <span className={`grid w-5 place-items-center ${option.iconContainerClassName ?? "h-5"}`}>
+                              {option.icon}
+                            </span>
+                            <span className="inline-flex h-5 items-center leading-5">{option.label}</span>
                           </span>
+                        ) : (
                           <span className="inline-flex h-5 items-center leading-5">{option.label}</span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : kratosAction && kratosOidcButtons.length > 0 ? (
+                <div className="space-y-2.5">
+                  {kratosOidcButtons.map((node) => (
+                    <form action={kratosAction} key={`${node.attributes?.name}-${node.attributes?.value}`} method={kratosMethod}>
+                      {renderKratosHiddenInputs(`oidc-${node.attributes?.value}`)}
+                      <button
+                        className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
+                        name={node.attributes?.name}
+                        type="submit"
+                        value={node.attributes?.value}
+                      >
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <span className="inline-flex h-5 items-center leading-5">
+                            {node.meta?.label?.text ?? node.attributes?.value ?? "Continue"}
+                          </span>
                         </span>
-                      ) : (
-                        <span className="inline-flex h-5 items-center leading-5">{option.label}</span>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
+                      </button>
+                    </form>
+                  ))}
+                </div>
+              ) : null}
 
               <p className="mt-7 text-center text-sm text-muted-foreground">
                 New to picoAI?{" "}

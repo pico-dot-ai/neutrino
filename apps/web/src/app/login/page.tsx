@@ -1,7 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Button } from "@neutrino/ui";
 import { LoginForm } from "@/components/auth/login-form";
-import { HostedLoginFlow } from "@/components/auth/hosted-login-flow";
 import { FrostedHeader } from "@/components/design/frosted-header";
 import { getAuthPolicyEnv } from "@/lib/config";
 import styles from "./login.module.css";
@@ -19,6 +19,11 @@ export default async function LoginPage(props: {
     searchParams.next && searchParams.next.startsWith("/") ? searchParams.next : "/admin";
   const loginStartHref = `/api/auth/login/start?next=${encodeURIComponent(nextPath)}`;
   const flowId = searchParams.flow;
+  const usesKratos = authEnv.AUTH_PROVIDER === "ory-kratos";
+
+  if (usesKratos && !flowId) {
+    redirect(loginStartHref);
+  }
 
   return (
     <main className={styles.shell}>
@@ -57,15 +62,18 @@ export default async function LoginPage(props: {
           nextPath={searchParams.next}
         />
       ) : authEnv.ORY_KRATOS_PUBLIC_URL && flowId ? (
-        <div className="mx-auto w-full max-w-lg rounded-[1.25rem] border border-white/70 bg-white/70 p-8 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
-          <div className="space-y-4 text-center">
-            <h1 className="text-2xl font-normal text-foreground">Sign in</h1>
-            <p className="text-sm text-muted-foreground">
-              Choose an identity provider to continue.
-            </p>
-            <HostedLoginFlow kratosPublicUrl={authEnv.ORY_KRATOS_PUBLIC_URL} flowId={flowId} />
-          </div>
-        </div>
+        <LoginForm
+          initialError={
+            searchParams.error === "forbidden"
+              ? "Your account is authenticated but does not meet app admin eligibility requirements."
+              : undefined
+          }
+          kratosFlow={{
+            flowId,
+            kratosPublicUrl: authEnv.ORY_KRATOS_PUBLIC_URL
+          }}
+          nextPath={searchParams.next}
+        />
       ) : (
         <div className="mx-auto w-full max-w-lg rounded-[1.25rem] border border-white/70 bg-white/70 p-8 shadow-[0_20px_56px_rgba(15,23,42,0.1)] backdrop-blur-xl">
           <div className="space-y-4 text-center">

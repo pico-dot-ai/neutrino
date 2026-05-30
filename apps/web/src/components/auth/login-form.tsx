@@ -114,7 +114,6 @@ export function LoginForm(props: {
   const router = useRouter();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [rememberDevice, setRememberDevice] = React.useState(true);
   const [method, setMethod] = React.useState<AuthMethod>("password");
   const [step, setStep] = React.useState<AuthStep>("start");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
@@ -180,7 +179,7 @@ export function LoginForm(props: {
       node.attributes.value
   );
   const kratosAction = kratosFlow?.ui?.action;
-  const kratosMethod = (kratosFlow?.ui?.method ?? "POST").toUpperCase();
+  const kratosMethod = (kratosFlow?.ui?.method ?? "POST").toLowerCase();
   const kratosMessage = kratosFlow?.ui?.messages?.[0]?.text;
   const canSubmitKratosPassword = Boolean(kratosAction && kratosPasswordSubmit);
 
@@ -193,6 +192,17 @@ export function LoginForm(props: {
         value={node.attributes?.value ?? ""}
       />
     ));
+  }
+
+  function renderProviderIcon(node: KratosUiNode) {
+    const providerLabel = node.meta?.label?.text?.toLowerCase() ?? "";
+    const providerValue = node.attributes?.value?.toLowerCase() ?? "";
+
+    if (providerLabel.includes("google") || providerValue.includes("google")) {
+      return <Image src="/brand/google-g-logo.png" alt="" width={20} height={20} />;
+    }
+
+    return null;
   }
 
   function selectPassword() {
@@ -330,16 +340,6 @@ export function LoginForm(props: {
                     value={password}
                   />
                 </div>
-                <label className="inline-flex items-center gap-2 text-sm text-foreground">
-                  <input
-                    checked={rememberDevice}
-                    className="h-4 w-4 rounded border-border text-foreground focus:ring-0"
-                    onChange={(event) => setRememberDevice(event.target.checked)}
-                    type="checkbox"
-                  />
-                  Remember me on this device
-                </label>
-
                 {kratosError || kratosMessage || error ? (
                   <p className="rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                     {kratosError ?? kratosMessage ?? error}
@@ -401,8 +401,13 @@ export function LoginForm(props: {
                         value={node.attributes?.value}
                       >
                         <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="inline-flex h-5 items-center leading-5">
-                            {node.meta?.label?.text ?? node.attributes?.value ?? "Continue"}
+                          <span className="grid grid-cols-[20px_auto] items-center gap-3">
+                            <span className="grid h-5 w-5 place-items-center">
+                              {renderProviderIcon(node)}
+                            </span>
+                            <span className="inline-flex h-5 items-center leading-5">
+                              {node.meta?.label?.text ?? node.attributes?.value ?? "Continue"}
+                            </span>
                           </span>
                         </span>
                       </button>

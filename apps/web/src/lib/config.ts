@@ -37,7 +37,7 @@ const localIdentityUserSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
   email: z.string().email(),
-  groups: z.array(z.string().min(1)).min(1)
+  groups: z.array(z.string().min(1)).default([])
 });
 
 const localIdentityUsersSchema = z.array(localIdentityUserSchema).min(1);

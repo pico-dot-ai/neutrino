@@ -37,9 +37,6 @@ export async function proxy(request: NextRequest) {
 
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", pathname);
-  if (result.status === 403) {
-    loginUrl.searchParams.set("error", "forbidden");
-  }
 
   return NextResponse.redirect(loginUrl);
 }

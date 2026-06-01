@@ -17,20 +17,8 @@ type KratosWhoAmIResponse = {
       };
       [key: string]: unknown;
     };
-    metadata_public?: {
-      groups?: unknown;
-      [key: string]: unknown;
-    };
   };
 };
-
-function asStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((entry): entry is string => typeof entry === "string");
-}
 
 export default class HostedIdentityProviderAdapter implements IdentityProvider {
   providerId: string;
@@ -93,7 +81,6 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
     const email = payload.identity?.traits?.email;
     const issuedAt = payload.authenticated_at;
     const expiresAt = payload.expires_at;
-    const groups = asStringArray(payload.identity?.metadata_public?.groups);
     const usernameFromTraits = payload.identity?.traits?.username;
     const first = payload.identity?.traits?.name?.first;
     const last = payload.identity?.traits?.name?.last;
@@ -112,7 +99,7 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
         actorId: `ory:${identityId}`,
         username,
         email,
-        groups
+        groups: []
       }
     };
   }

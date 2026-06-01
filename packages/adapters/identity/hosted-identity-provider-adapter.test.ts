@@ -22,9 +22,6 @@ describe("HostedIdentityProviderAdapter", () => {
           traits: {
             email: "admin@pico.ai",
             username: "admin"
-          },
-          metadata_public: {
-            groups: ["picoai", "app_admin"]
           }
         }
       })
@@ -48,7 +45,7 @@ describe("HostedIdentityProviderAdapter", () => {
         actorId: "ory:identity_123",
         username: "admin",
         email: "admin@pico.ai",
-        groups: ["picoai", "app_admin"]
+        groups: []
       }
     });
   });
@@ -79,7 +76,7 @@ describe("HostedIdentityProviderAdapter", () => {
     ).resolves.toBeNull();
   });
 
-  it("maps groups from metadata_public.groups", async () => {
+  it("does not map metadata_public.groups into Neutrino authorization", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       createJsonResponse({
         id: "session_456",
@@ -109,10 +106,10 @@ describe("HostedIdentityProviderAdapter", () => {
       cookieHeader: "ory_kratos_session=def"
     });
 
-    expect(session?.actor.groups).toEqual(["picoai", "app_developer"]);
+    expect(session?.actor.groups).toEqual([]);
   });
 
-  it("ignores traits.groups because traits are user-editable", async () => {
+  it("does not map traits.groups into Neutrino authorization", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       createJsonResponse({
         id: "session_789",

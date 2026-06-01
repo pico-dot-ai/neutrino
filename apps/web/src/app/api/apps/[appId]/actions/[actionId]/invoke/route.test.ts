@@ -73,10 +73,10 @@ describe("POST /api/apps/[appId]/actions/[actionId]/invoke", () => {
         headers: expect.objectContaining({
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:admin",
-          "x-pico-admin-groups": "picoai,app_admin"
+          "x-pico-admin-actor-id": "local:admin"
         })
       })
     );
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).not.toHaveProperty("x-pico-admin-groups");
   });
 });

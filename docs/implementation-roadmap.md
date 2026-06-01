@@ -255,8 +255,8 @@ Current notes:
 - `/v1/chat` runs through the Dev Agent runtime and preserves the existing SSE chat contract.
 - `/v1/chat` accepts optional runtime scope selection (`workspaceId`, `projectId`, `agentId`) while preserving Dev Agent defaults when omitted.
 - `/v1/chat` now carries the authenticated admin `actorId` into runtime execution records, and runtime records include action ID, service package name/version, and schema-version metadata.
-- `POST /v1/apps/:appId/actions/:actionId/invoke` invokes the Dev Agent vertical through app/action/service identity, persists memory and artifact metadata, and denies actors without a matching grant.
-- App action invocation now supports group-aware authorization via `x-pico-admin-groups`.
+- `POST /v1/apps/:appId/actions/:actionId/invoke` invokes the Dev Agent vertical for authenticated actors and persists memory and artifact metadata.
+- App action invocation is currently authentication-only; durable authorization remains deferred to the OpenFGA slice.
 - Invalid runtime selection returns an SSE `error` event without changing the stream contract.
 - Authorized control-plane runtime readback (`/v1/control-plane/runtime/runs`) returns run, trace, usage, memory, and artifact records for the Dev Agent scope.
 - Admin console runtime panel surfaces run status, model, started/completed timestamps, trace count, output/error preview, and explicit refresh behavior.

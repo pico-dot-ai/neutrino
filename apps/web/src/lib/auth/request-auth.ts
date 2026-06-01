@@ -1,5 +1,4 @@
 import { getAuthPolicyEnv } from "@/lib/config";
-import { isEligibleAdminActor } from "./policy";
 import { readAdminSessionFromCookieHeader } from "./session";
 
 export async function getAdminSessionFromCookieHeader(cookieHeader: string | null) {
@@ -15,7 +14,7 @@ export async function getAdminSessionFromCookieHeader(cookieHeader: string | nul
         actorId: "local:auth-disabled",
         username: "auth-disabled",
         email: "admin@pico.ai",
-        groups: ["picoai", "app_admin", "org_admin"]
+        groups: []
       }
     };
   }
@@ -31,14 +30,6 @@ export async function requireAdminSession(cookieHeader: string | null) {
       ok: false as const,
       status: 401,
       error: "Authentication required."
-    };
-  }
-
-  if (!isEligibleAdminActor(session.actor)) {
-    return {
-      ok: false as const,
-      status: 403,
-      error: "App admin privileges are required."
     };
   }
 

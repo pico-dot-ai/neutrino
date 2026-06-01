@@ -481,8 +481,7 @@ describe("createHttpServer", () => {
           "Content-Type": "application/json",
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:admin",
-          "x-pico-admin-groups": "picoai,app_admin"
+          "x-pico-admin-actor-id": "local:admin"
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Run action" }]
@@ -513,7 +512,7 @@ describe("createHttpServer", () => {
     );
   });
 
-  it("rejects app action invocation without an authorized actor grant", async () => {
+  it("allows app action invocation for any authenticated actor", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
       env: {
@@ -532,39 +531,6 @@ describe("createHttpServer", () => {
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
           "x-pico-admin-actor-id": "local:someone-else"
-        },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: "Run action" }]
-        })
-      })
-    );
-
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({
-      error: "Actor is not allowed to invoke this action."
-    });
-  });
-
-  it("allows app action invocation when a group grant authorizes the actor", async () => {
-    const handler = createAppHandler({
-      aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
-    });
-
-    const response = await handler(
-      new Request("http://127.0.0.1/v1/apps/pico.dev-agent/actions/generate_reply/invoke", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-proxy-secret": "secret",
-          "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:someone-else",
-          "x-pico-admin-groups": "app_admin"
         },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Run action" }]
@@ -593,8 +559,7 @@ describe("createHttpServer", () => {
           "Content-Type": "application/json",
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:admin",
-          "x-pico-admin-groups": "app_admin"
+          "x-pico-admin-actor-id": "local:admin"
         },
         body: JSON.stringify({
           manifest: {
@@ -644,8 +609,7 @@ describe("createHttpServer", () => {
           "Content-Type": "application/json",
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:admin",
-          "x-pico-admin-groups": "app_admin"
+          "x-pico-admin-actor-id": "local:admin"
         },
         body: JSON.stringify({
           displayName: "Decision Tracker",
@@ -668,7 +632,7 @@ describe("createHttpServer", () => {
     );
   });
 
-  it("rejects control-plane writes when actor cannot manage workspace", async () => {
+  it("allows control-plane writes for any authenticated actor", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
       env: {
@@ -686,14 +650,13 @@ describe("createHttpServer", () => {
           "Content-Type": "application/json",
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:someone-else",
-          "x-pico-admin-groups": "viewer"
+          "x-pico-admin-actor-id": "local:someone-else"
         },
         body: JSON.stringify({
           manifest: {
             kind: "pico.binding",
             version: 1,
-            id: "pico.binding.unauthorized",
+            id: "pico.binding.authenticated",
             environment: "local",
             bindings: {
               languageModel: {
@@ -706,10 +669,7 @@ describe("createHttpServer", () => {
       })
     );
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({
-      error: "Actor is not allowed to manage control-plane resources."
-    });
+    expect(response.status).toBe(201);
   });
 
   it("rejects control-plane requests without proxy secret", async () => {

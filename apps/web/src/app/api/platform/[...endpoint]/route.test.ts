@@ -39,7 +39,7 @@ describe("/api/platform/[...endpoint]", () => {
     vi.clearAllMocks();
   });
 
-  it("forwards GET requests with admin identity headers and groups", async () => {
+  it("forwards GET requests with authenticated identity headers", async () => {
     const response = await GET(
       new Request("http://127.0.0.1/api/platform/context?kind=pico.app"),
       { params: Promise.resolve({ endpoint: ["context"] }) }
@@ -52,11 +52,11 @@ describe("/api/platform/[...endpoint]", () => {
         headers: expect.objectContaining({
           "x-api-proxy-secret": "secret",
           "x-pico-admin-email": "admin@pico.ai",
-          "x-pico-admin-actor-id": "local:admin",
-          "x-pico-admin-groups": "picoai,app_admin"
+          "x-pico-admin-actor-id": "local:admin"
         })
       })
     );
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).not.toHaveProperty("x-pico-admin-groups");
   });
 
   it("forwards POST body to control-plane endpoint", async () => {

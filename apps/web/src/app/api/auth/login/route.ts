@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authenticateLocalIdentity } from "@/lib/auth/identity";
-import { isEligibleAdminActor } from "@/lib/auth/policy";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { issueAdminSession } from "@/lib/auth/session";
 import { getAuthPolicyEnv } from "@/lib/config";
@@ -48,13 +47,6 @@ export async function POST(request: Request) {
 
     if (!actor) {
       return NextResponse.json({ error: "Invalid username or password." }, { status: 401 });
-    }
-
-    if (!isEligibleAdminActor(actor)) {
-      return NextResponse.json(
-        { error: "App admin privileges are required for this console." },
-        { status: 403 }
-      );
     }
 
     const token = await issueAdminSession(actor);

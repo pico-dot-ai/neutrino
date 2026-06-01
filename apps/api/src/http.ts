@@ -253,21 +253,12 @@ type RuntimeManifests = {
 type AdminContext = {
   email: string;
   actorId: string | null;
-  groupIds: string[];
 };
 
 function parseAdminContext(request: Request): AdminContext {
-  const groupsHeader = request.headers.get("x-pico-admin-groups");
-  const groupIds = (groupsHeader ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((slug) => (slug.startsWith("group_") ? slug : `group_${slug}`));
-
   return {
     email: request.headers.get("x-pico-admin-email") ?? "unknown@pico.ai",
-    actorId: request.headers.get("x-pico-admin-actor-id") ?? null,
-    groupIds
+    actorId: request.headers.get("x-pico-admin-actor-id") ?? null
   };
 }
 
@@ -455,80 +446,8 @@ export function createAppHandler(options: {
     };
   }
 
-  async function canInvokeAction(options: {
-    actorId: string | null;
-    groupIds: string[];
-    scope: ScopeRef;
-    app: PicoAppManifest;
-    actionId: string;
-    servicePackageName?: string;
-  }) {
-    if (!options.actorId) {
-      return false;
-    }
-
-    const action = options.app.actions?.[options.actionId];
-    if (options.app.visibility?.access === "public" || action?.visibility?.access === "public") {
-      return true;
-    }
-
-    const actorGrants = await core.accessGraphRepository.listGrants({
-      workspaceId: options.scope.workspaceId,
-      granteeType: "actor",
-      granteeId: options.actorId
-    });
-    const groupGrants = await Promise.all(
-      options.groupIds.map((groupId) =>
-        core.accessGraphRepository.listGrants({
-          workspaceId: options.scope.workspaceId,
-          granteeType: "group",
-          granteeId: groupId
-        })
-      )
-    );
-    const grants = [...actorGrants, ...groupGrants.flat()];
-    return grants.some((grant) => {
-      if (grant.relation !== "can_use" && grant.relation !== "can_invoke") {
-        return false;
-      }
-      if (grant.resourceType === "app" && grant.resourceId === options.app.id) {
-        return true;
-      }
-      if (grant.resourceType === "action" && grant.resourceId === `${options.app.id}:${options.actionId}`) {
-        return true;
-      }
-      return grant.resourceType === "service" && grant.resourceId === options.servicePackageName;
-    });
-  }
-
-  async function canManageControlPlane(scope: ScopeRef, adminContext: AdminContext) {
-    if (!adminContext.actorId && adminContext.groupIds.length === 0) {
-      return false;
-    }
-
-    const actorGrants = adminContext.actorId
-      ? await core.accessGraphRepository.listGrants({
-          workspaceId: scope.workspaceId,
-          granteeType: "actor",
-          granteeId: adminContext.actorId
-        })
-      : [];
-    const groupGrants = await Promise.all(
-      adminContext.groupIds.map((groupId) =>
-        core.accessGraphRepository.listGrants({
-          workspaceId: scope.workspaceId,
-          granteeType: "group",
-          granteeId: groupId
-        })
-      )
-    );
-    const grants = [...actorGrants, ...groupGrants.flat()];
-    return grants.some(
-      (grant) =>
-        grant.relation === "can_manage" &&
-        grant.resourceType === "workspace" &&
-        grant.resourceId === scope.workspaceId
-    );
+  function hasAuthenticatedActor(adminContext: AdminContext) {
+    return Boolean(adminContext.actorId);
   }
 
   async function resolveAppAction(options: {
@@ -692,17 +611,8 @@ export function createAppHandler(options: {
         const resolved = await resolveAppAction({ scope, appId, actionId });
         const servicePackageName = resolved.service.packageName ?? resolved.service.id;
 
-        if (
-          !(await canInvokeAction({
-            actorId,
-            groupIds: adminContext.groupIds,
-            scope,
-            app: resolved.app,
-            actionId,
-            servicePackageName
-          }))
-        ) {
-          return json(403, { error: "Actor is not allowed to invoke this action." });
+        if (!hasAuthenticatedActor(adminContext)) {
+          return json(401, { error: "Authentication required." });
         }
 
         const languageModelBinding = await core.bindingResolver.resolveBinding({
@@ -777,8 +687,8 @@ export function createAppHandler(options: {
         controlPlane.usageLedger.track(`admin:${adminContext.email}`);
         const isControlPlaneWrite =
           request.method !== "GET" && request.method !== "HEAD";
-        if (isControlPlaneWrite && !(await canManageControlPlane(devAgentScope, adminContext))) {
-          return json(403, { error: "Actor is not allowed to manage control-plane resources." });
+        if (isControlPlaneWrite && !hasAuthenticatedActor(adminContext)) {
+          return json(401, { error: "Authentication required." });
         }
 
         if (request.method === "GET" && pathname === "/v1/control-plane/context") {
@@ -930,8 +840,8 @@ export function createAppHandler(options: {
           const payload = registerManifestSchema.parse(await request.json());
           const manifest = validatePlatformManifest(payload.manifest);
           const scope = normalizeScope(payload.scope);
-          if (!(await canManageControlPlane(scope, adminContext))) {
-            return json(403, { error: "Actor is not allowed to manage control-plane resources." });
+          if (!hasAuthenticatedActor(adminContext)) {
+            return json(401, { error: "Authentication required." });
           }
           const record = await core.manifestRegistry.registerManifest({
             scope,
@@ -978,8 +888,8 @@ export function createAppHandler(options: {
             return json(400, { error: "Binding registration requires a pico.binding manifest." });
           }
           const scope = normalizeScope(payload.scope);
-          if (!(await canManageControlPlane(scope, adminContext))) {
-            return json(403, { error: "Actor is not allowed to manage control-plane resources." });
+          if (!hasAuthenticatedActor(adminContext)) {
+            return json(401, { error: "Authentication required." });
           }
           const record = await core.manifestRegistry.registerManifest({
             scope,

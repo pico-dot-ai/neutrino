@@ -9,7 +9,6 @@ import styles from "./login.module.css";
 export default async function LoginPage(props: {
   searchParams: Promise<{
     next?: string;
-    error?: string;
     flow?: string;
   }>;
 }) {
@@ -54,20 +53,10 @@ export default async function LoginPage(props: {
       </FrostedHeader>
       {authEnv.AUTH_PROVIDER === "local" ? (
         <LoginForm
-          initialError={
-            searchParams.error === "forbidden"
-              ? "Your account is authenticated but does not meet app admin eligibility requirements."
-              : undefined
-          }
           nextPath={searchParams.next}
         />
       ) : authEnv.ORY_KRATOS_PUBLIC_URL && flowId ? (
         <LoginForm
-          initialError={
-            searchParams.error === "forbidden"
-              ? "Your account is authenticated but does not meet app admin eligibility requirements."
-              : undefined
-          }
           kratosFlow={{
             flowId,
             kratosPublicUrl: authEnv.ORY_KRATOS_PUBLIC_URL

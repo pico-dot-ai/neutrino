@@ -108,9 +108,10 @@ For Kratos-backed production auth:
 
 Kratos identity data policy for this repo:
 
-- `traits` are profile/authn data and are user-editable; do not use `traits.groups` as app authorization truth.
-- Temporary Neutrino app groups must be written only to admin-managed `metadata_public.groups` until OpenFGA is live.
-- Temporary groups must remain non-sensitive role labels only (for example `picoai`, `app_admin`, `app_developer`).
+- Kratos owns authentication, identity profile data, and browser sessions.
+- `traits.email` is the password-login identifier.
+- Neutrino does not consume Kratos groups, roles, grants, permissions, or app authorization state.
+- Ignore legacy `traits.groups` and `metadata_public.groups` values for Neutrino runtime access decisions.
 
 `APP_IDENTITY_USERS_JSON` is required only when `AUTH_PROVIDER=local`. The development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape only for local fallback mode:
 
@@ -119,8 +120,7 @@ Kratos identity data policy for this repo:
   {
     "username": "admin",
     "password": "replace-with-a-strong-password",
-    "email": "admin@pico.ai",
-    "groups": ["picoai", "app_admin", "org_admin"]
+    "email": "admin@pico.ai"
   }
 ]
 ```
@@ -145,20 +145,11 @@ If GitHub-to-Vercel auto deploy is configured, pushing or merging to the product
 - Ory/Kratos is implemented through Cloud Run services and migration/bootstrap jobs in this repo.
 - Local username/password auth remains only as a development, bootstrap, and emergency fallback under `AUTH_PROVIDER=local`.
 - Auth must stay behind provider ports and adapters while the backing implementation moves to Ory/Kratos.
-- SSO is planned through identity, authenticator, directory, and policy provider ports rather than feature-code rewrites.
+- SSO is planned through identity, authenticator, and directory provider ports rather than feature-code rewrites.
 - Session-backed access must protect Admin Console and builder surfaces.
 - OpenFGA is the accepted durable runtime authorization model behind `PolicyEngine`.
 - Ory Keto/Permissions is a related Zanzibar-style option, but it is not the selected runtime authorization engine.
 - Permission builder UX is deferred; future builder forms must project to OpenFGA models and relationship tuples.
-
-Temporary Kratos metadata group assignment operation:
-
-```sh
-scripts/kratos-set-public-metadata-groups.sh --identity-id <kratos-identity-id> --groups picoai,app_admin
-scripts/kratos-set-public-metadata-groups.sh --identity-id <kratos-identity-id> --groups picoai,app_developer
-```
-
-This operation writes only `metadata_public.groups` through Kratos Admin API and rejects any `traits.groups` write attempts.
 
 ### Google Secret Manager
 
@@ -494,7 +485,6 @@ Before promoting a web deployment:
 - Confirm `API_BASE_URL` points to the root Cloud Run service URL.
 - Confirm `API_PROXY_SHARED_SECRET` matches the Cloud Run secret value.
 - Confirm `AUTH_PROVIDER=ory-kratos` for production.
-- Confirm temporary app groups, when needed, are managed in Kratos `metadata_public.groups` via admin-only operations.
 - Confirm `APP_SESSION_SECRET` is set and strong.
 
 Production verification:

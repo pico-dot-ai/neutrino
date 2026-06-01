@@ -21,8 +21,7 @@ export async function POST(
         "Content-Type": "application/json",
         "x-api-proxy-secret": proxyEnv.API_PROXY_SHARED_SECRET,
         "x-pico-admin-email": auth.session.actor.email,
-        "x-pico-admin-actor-id": auth.session.actor.actorId,
-        "x-pico-admin-groups": auth.session.actor.groups.join(",")
+        "x-pico-admin-actor-id": auth.session.actor.actorId
       },
       body: await request.text()
     }

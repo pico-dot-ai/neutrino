@@ -15,7 +15,6 @@ type KratosWhoAmIResponse = {
         first?: string;
         last?: string;
       };
-      [key: string]: unknown;
     };
   };
 };

@@ -30,7 +30,7 @@
         }
       },
       "required": ["email"],
-      "additionalProperties": true
+      "additionalProperties": false
     }
   },
   "required": ["traits"],

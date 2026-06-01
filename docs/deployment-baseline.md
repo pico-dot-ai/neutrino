@@ -111,7 +111,7 @@ Kratos identity data policy for this repo:
 - Kratos owns authentication, identity profile data, and browser sessions.
 - `traits.email` is the password-login identifier.
 - Neutrino does not consume Kratos groups, roles, grants, permissions, or app authorization state.
-- Ignore legacy `traits.groups` and `metadata_public.groups` values for Neutrino runtime access decisions.
+- Kratos identity schemas must not define or retain `traits.groups` or `metadata_public.groups`.
 
 `APP_IDENTITY_USERS_JSON` is required only when `AUTH_PROVIDER=local`. The development-only `admin` fallback is intentionally disabled when `NODE_ENV=production`. Use this JSON shape only for local fallback mode:
 

@@ -11,13 +11,14 @@ import {
   FileBox,
   History,
   LayoutDashboard,
+  Menu,
   Play,
   RefreshCw,
   Send,
   Settings,
   Upload
 } from "lucide-react";
-import { Badge, Button, Input, Separator, Textarea } from "@neutrino/ui";
+import { Badge, Button, Input, Separator, Sheet, SheetContent, SheetOverlay, Textarea } from "@neutrino/ui";
 import { FrostedHeader } from "@/components/design/frosted-header";
 
 type ActorPayload = {
@@ -248,6 +249,7 @@ export function DeveloperConsole() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isInvoking, setIsInvoking] = React.useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = React.useState(false);
   const [lastRefreshedAt, setLastRefreshedAt] = React.useState<string | null>(null);
 
   const [displayName, setDisplayName] = React.useState("Sample Internal App");
@@ -440,6 +442,7 @@ export function DeveloperConsole() {
     params.set("section", section);
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    setIsMobileNavOpen(false);
   }
 
   async function registerOAuthApp(event: React.FormEvent<HTMLFormElement>) {
@@ -1134,47 +1137,55 @@ export function DeveloperConsole() {
     }
   }
 
+  function renderControlPane() {
+    return (
+      <>
+        <div className="min-w-0 px-2">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Neutrino</p>
+          <h1 className="mt-1 truncate text-xl font-semibold tracking-normal">Control Plane</h1>
+          <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+            {context ? scopeLabel(context.scope) : "Loading workspace context"}
+          </p>
+        </div>
+        <div className="mt-4 px-2">
+          <Badge className="max-w-full truncate border-border bg-white/80 text-foreground">
+            {actor?.email ?? context?.actor.email ?? "..."}
+          </Badge>
+        </div>
+        <Separator className="my-4" />
+        <nav aria-label="Control plane sections" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+          {SECTIONS.map((section) => {
+            const Icon = section.icon;
+            const active = activeSection === section.id;
+            return (
+              <Button
+                className="h-9 w-full justify-start rounded-lg px-3"
+                key={section.id}
+                onClick={() => navigateToSection(section.id)}
+                size="sm"
+                type="button"
+                variant={active ? "secondary" : "ghost"}
+              >
+                <Icon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">{section.label}</span>
+              </Button>
+            );
+          })}
+        </nav>
+        {lastRefreshedAt ? (
+          <p className="mt-4 border-t border-border/70 px-2 pt-4 text-xs text-muted-foreground">
+            Last refreshed {new Date(lastRefreshedAt).toLocaleString()}
+          </p>
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <main className="h-screen overflow-hidden bg-[#f6f7f9] text-foreground">
       <div className="flex h-screen w-full min-w-0 overflow-hidden">
-        <aside className="hidden h-screen w-[288px] shrink-0 flex-col border-r border-border/70 bg-[#fbfbfc]/90 px-3 py-4 lg:flex">
-          <div className="min-w-0 px-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground">Neutrino</p>
-            <h1 className="mt-1 truncate text-xl font-semibold tracking-normal">Control Plane</h1>
-            <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
-              {context ? scopeLabel(context.scope) : "Loading workspace context"}
-            </p>
-          </div>
-          <div className="mt-4 px-2">
-            <Badge className="max-w-full truncate border-border bg-white/80 text-foreground">
-              {actor?.email ?? context?.actor.email ?? "..."}
-            </Badge>
-          </div>
-          <Separator className="my-4" />
-          <nav aria-label="Control plane sections" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
-            {SECTIONS.map((section) => {
-              const Icon = section.icon;
-              const active = activeSection === section.id;
-              return (
-                <Button
-                  className="h-9 w-full justify-start rounded-lg px-3"
-                  key={section.id}
-                  onClick={() => navigateToSection(section.id)}
-                  size="sm"
-                  type="button"
-                  variant={active ? "secondary" : "ghost"}
-                >
-                  <Icon className="mr-2 h-4 w-4 shrink-0" />
-                  <span className="truncate">{section.label}</span>
-                </Button>
-              );
-            })}
-          </nav>
-          {lastRefreshedAt ? (
-            <p className="mt-4 border-t border-border/70 px-2 pt-4 text-xs text-muted-foreground">
-              Last refreshed {new Date(lastRefreshedAt).toLocaleString()}
-            </p>
-          ) : null}
+        <aside className="hidden h-screen w-[272px] shrink-0 flex-col border-r border-border/70 bg-[#fbfbfc]/90 px-3 py-4 md:flex xl:w-[288px]">
+          {renderControlPane()}
         </aside>
         <section className="relative flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
           <FrostedHeader
@@ -1202,6 +1213,17 @@ export function DeveloperConsole() {
             }}
             navLabel="Workspace actions"
           >
+            <Button
+              aria-label="Open control plane sections"
+              className="px-3 md:hidden"
+              onClick={() => setIsMobileNavOpen(true)}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              <Menu className="mr-2 h-4 w-4" />
+              Sections
+            </Button>
             <Button className="px-3" onClick={() => void refresh()} size="sm" type="button" variant="secondary">
               <RefreshCw className="mr-2 h-4 w-4" />
               <span className="hidden sm:inline">{isRefreshing ? "Refreshing" : "Refresh"}</span>
@@ -1217,29 +1239,22 @@ export function DeveloperConsole() {
               <span className="sm:hidden">Exit</span>
             </Button>
           </FrostedHeader>
-          <div className="border-b border-border/70 bg-[#fbfbfc]/80 px-3 py-3 sm:px-5 lg:hidden">
-            <label className="mb-2 block text-xs font-semibold uppercase text-muted-foreground">
-              Section
-            </label>
-            <select
-              aria-label="Active section"
-              className="h-10 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm"
-              onChange={(event) => navigateToSection(event.target.value as SectionId)}
-              value={activeSection}
-            >
-              {SECTIONS.map((section) => (
-                <option key={section.id} value={section.id}>
-                  {section.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-24 sm:px-5 lg:px-6">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-24 sm:px-5 md:px-6">
             {message ? <p className="mb-4 rounded-lg border border-border/70 bg-white/80 px-4 py-3 text-sm">{message}</p> : null}
             {renderActiveSection()}
           </div>
         </section>
       </div>
+      <Sheet onOpenChange={setIsMobileNavOpen} open={isMobileNavOpen}>
+        <SheetOverlay className="md:hidden" />
+        <SheetContent
+          aria-label="Control plane navigation"
+          className="bg-[#fbfbfc] px-3 py-4 md:hidden"
+          side="left"
+        >
+          {renderControlPane()}
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }

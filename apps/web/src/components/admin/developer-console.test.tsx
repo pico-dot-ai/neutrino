@@ -228,7 +228,7 @@ describe("DeveloperConsole", () => {
     render(<DeveloperConsole />);
     await waitFor(() => expect(screen.getByText("Control Plane")).toBeInTheDocument());
     expect(screen.getByRole("navigation", { name: "Control plane sections" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Active section")).toHaveValue("overview");
+    expect(screen.getByRole("button", { name: "Open control plane sections" })).toBeInTheDocument();
     expect(screen.getByText("Latest run")).toBeInTheDocument();
     expect(screen.getByText("run_1")).toBeInTheDocument();
   });
@@ -249,6 +249,20 @@ describe("DeveloperConsole", () => {
     await waitFor(() => expect(screen.getByText("Control Plane")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Apps" }));
     expect(replaceMock).toHaveBeenCalledWith("/admin?section=apps", { scroll: false });
+  });
+
+  it("opens mobile section navigation from the header", async () => {
+    render(<DeveloperConsole />);
+    await waitFor(() => expect(screen.getByText("Control Plane")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Open control plane sections" }));
+    const dialog = await screen.findByRole("dialog", { name: "Control plane navigation" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Services" }));
+
+    expect(replaceMock).toHaveBeenCalledWith("/admin?section=services", { scroll: false });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Control plane navigation" })).not.toBeInTheDocument();
+    });
   });
 
   it("submits structured app manifest payload", async () => {

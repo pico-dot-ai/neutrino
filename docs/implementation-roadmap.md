@@ -209,6 +209,7 @@ Target outcomes:
 - Ory/Kratos becomes the authentication and session-management implementation target.
 - Local username/password implementation remains only as development, bootstrap, and emergency fallback until Ory/Kratos is implemented.
 - SSO migration path remains behind identity, authenticator, directory, and policy provider ports.
+- Tenant user lifecycle becomes a first-class platform workflow: create/invite users for a workspace or org, create or link the Kratos identity, map it to a durable Neutrino actor, and attach tenant membership through Neutrino grants/OpenFGA tuples.
 - OpenFGA becomes the accepted durable runtime authorization model behind `PolicyEngine`; Ory Keto/Permissions is a related Zanzibar-style option, not the selected runtime authz engine.
 - No permission builder is included in the current plan; future builder forms must project to OpenFGA models and relationship tuples.
 - Postgres + pgvector in first implementation slice.
@@ -217,12 +218,14 @@ Target outcomes:
 
 Validation:
 - Ory/Kratos authn/session plan and implementation tests pass when that slice starts.
+- Tenant user onboarding and administration has repo-safe operational tooling before customer onboarding: no Kratos trait/metadata role storage, no direct public Kratos admin exposure, and sanitized audit output.
 - OpenFGA authorization model is documented in `docs/auth-baseline.md` before authz implementation starts.
 - Memory/artifact/vector tests pass
 
 Current notes:
 - Login/session/admin surfaces exist; continue hardening and coverage.
 - Accepted implementation order is: Ory/Kratos authn/session first, OpenFGA authz second.
+- Add a dedicated tenant user management slice before broader tenant onboarding. It must cover create/invite, identity linking, disable/revoke, audit/readback, and workspace/org membership assignment using Neutrino actor/identity/grant records as the source of truth.
 - Current Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that will sync into OpenFGA relationship tuples during authz implementation.
 - Postgres-backed core repositories are implemented for manifest registry, access graph, bindings, executions/runs, traces, usage, memory, and artifact metadata.
 - `CORE_DATABASE_URL` or explicit repository configuration selects durable Postgres repositories; in-memory repositories remain the fallback for local/bootstrap use.
@@ -293,8 +296,9 @@ Current notes:
 
 ## Immediate Next Actions
 1. Plan and implement Ory/Kratos authentication and session migration (`THU-22`).
-2. Plan OpenFGA durable authorization model implementation using `docs/auth-baseline.md` as the mapping baseline (`THU-30`).
-3. Complete pre-customer DB hardening gate for shared Postgres VM: private-only DB networking, staged migration promotion/runbook verification, and backup/restore evidence.
+2. Add tenant user lifecycle tooling for workspace/org onboarding and administration, backed by Kratos authn plus Neutrino actor/identity/grant records (`THU-32`).
+3. Plan OpenFGA durable authorization model implementation using `docs/auth-baseline.md` as the mapping baseline (`THU-30`).
+4. Complete pre-customer DB hardening gate for shared Postgres VM: private-only DB networking, staged migration promotion/runbook verification, and backup/restore evidence.
 
 ## Deferred Backlog
 - Add GitHub Actions deployment orchestration for API cloud deploys while keeping Cloud Build as the build/deploy worker.

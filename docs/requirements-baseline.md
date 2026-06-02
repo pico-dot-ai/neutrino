@@ -107,6 +107,7 @@ Build picoAI as a composable AI service platform: a system for defining, running
 | AUTH-007 | Accepted | OpenFGA is the durable runtime authorization model behind `PolicyEngine`; Ory Keto/Permissions is a related Zanzibar-style option but is not the selected runtime authorization engine. |
 | AUTH-008 | Accepted | Current Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that sync into OpenFGA relationship tuples during the authz implementation. |
 | AUTH-009 | Accepted | No permission builder is included in the current plan; future builder forms must project to OpenFGA models and relationship tuples and must not create a second permission language. |
+| AUTH-010 | Accepted | Tenant user management must support creating, inviting, linking, disabling, and auditing users across workspaces/orgs through Neutrino actor, identity, group, and grant records backed by Kratos authentication; tenant membership and access must not be stored in Kratos traits or metadata. |
 
 ### Data, Memory, and Artifacts
 | ID | Status | Requirement |

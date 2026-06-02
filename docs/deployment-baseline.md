@@ -147,6 +147,7 @@ If GitHub-to-Vercel auto deploy is configured, pushing or merging to the product
 - Auth must stay behind provider ports and adapters while the backing implementation moves to Ory/Kratos.
 - SSO is planned through identity, authenticator, and directory provider ports rather than feature-code rewrites.
 - Session-backed access must protect Admin Console and builder surfaces.
+- Tenant user management belongs in Neutrino actor, identity, group, grant, and OpenFGA relationship records. Kratos remains the authentication/session authority for credentials and login flows only.
 - OpenFGA is the accepted durable runtime authorization model behind `PolicyEngine`.
 - Ory Keto/Permissions is a related Zanzibar-style option, but it is not the selected runtime authorization engine.
 - Permission builder UX is deferred; future builder forms must project to OpenFGA models and relationship tuples.

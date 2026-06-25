@@ -34,7 +34,10 @@ export default function RootLayout({
       >
         <DotField className="fixed inset-0 z-0 pointer-events-none [&_canvas]:absolute [&_canvas]:inset-0 [&_canvas]:h-full [&_canvas]:w-full" />
         <div className="relative z-10 min-h-screen">{children}</div>
-      </body>
+      {/* impeccable-live-start */}
+<script src="http://localhost:8400/live.js"></script>
+{/* impeccable-live-end */}
+</body>
     </html>
   );
 }

@@ -275,6 +275,16 @@ export type GrantRecord = {
   createdAt: string;
 };
 
+export type AuditEventRecord = {
+  auditEventId: string;
+  workspaceId?: string;
+  actorId?: string;
+  action: string;
+  resource: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+};
+
 export type PlatformManifest =
   | PicoAppManifest
   | PicoServiceManifest

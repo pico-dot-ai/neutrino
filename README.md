@@ -73,8 +73,10 @@ The Vercel-facing app also uses:
 - `APP_SESSION_TTL_SECONDS`
 - `APP_IDENTITY_USERS_JSON`
 - `APP_AUTH_ENABLED`
+- `AUTH_PROVIDER`
+- `ORY_KRATOS_PUBLIC_URL`
 
-In production, `APP_IDENTITY_USERS_JSON` is required and must contain at least one actor with the `app_admin` group. See [docs/deployment-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/deployment-baseline.md) for the JSON shape.
+In production, `AUTH_PROVIDER=ory-kratos` is the primary path. `APP_IDENTITY_USERS_JSON` is only for local, bootstrap, or emergency fallback mode. See [docs/deployment-runbook.md](docs/deployment-runbook.md) for local, staging, production, promotion, and rollback procedures.
 
 For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable described in the [OpenAI quickstart](https://platform.openai.com/docs/quickstart).
 
@@ -82,3 +84,4 @@ For the OpenAI key, use the standard `OPENAI_API_KEY` environment variable descr
 - Cloud Build is the canonical API image rollout path.
 - Terraform under [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run) is the source of truth for the Cloud Run runtime contract.
 - Do not hand-configure Cloud Run env var names in the UI for normal operation.
+- Use [docs/deployment-runbook.md](docs/deployment-runbook.md) for local, staging, production, promotion, rollback, and secret rotation procedures.

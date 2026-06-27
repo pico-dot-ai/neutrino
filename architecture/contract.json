@@ -1,7 +1,7 @@
 {
   "name": "neutrino-architecture-contract",
-  "version": "1.8.0",
-  "lastUpdated": "2026-05-25",
+  "version": "1.9.0",
+  "lastUpdated": "2026-06-26",
   "purpose": "Define architecture in one place and enforce implementation conformance for a composable AI service platform.",
   "principles": [
     "All infrastructure integrations must be implemented as adapters behind stable ports.",
@@ -18,6 +18,7 @@
     "pgvector is the first vector implementation, not a permanent platform assumption.",
     "ObjectStorage owns artifact bytes; Postgres owns artifact metadata, permissions, and references.",
     "Ory/Kratos is the accepted authentication and session-management target; local username/password auth remains only a bootstrap and development fallback.",
+    "Hosted auth access must enforce verified-email and signup-eligibility rules before product access when those controls are configured.",
     "OpenFGA is the accepted durable runtime authorization model behind PolicyEngine.",
     "Ory Keto/Permissions is a related Zanzibar-style authorization option, but it is not the selected runtime authorization engine.",
     "Permission builder surfaces are deferred; future builder forms must project to OpenFGA authorization models and relationship tuples instead of defining a second permission language.",
@@ -52,12 +53,14 @@
       "Represent team and org structure through groups plus grants unless a concrete use case proves a separate table is needed.",
       "Support SSO through identity records linked to actors, not by special-casing users in product schema.",
       "Map Ory/Kratos identities to Neutrino identities and actors; do not use mutable email addresses as durable actor identifiers.",
+      "Managed user lifecycle, default grants, and audit/readback belong to Neutrino control-plane APIs and records, not to public Kratos browser surfaces.",
       "Use OpenFGA as the durable authorization decision engine; Neutrino grants remain source inputs, audit metadata, and local/bootstrap records that sync into OpenFGA relationship tuples.",
       "Visibility governs app, action, object, view, and service exposure: internal, public, or explicitly allowed workspaces/orgs/groups/actors."
     ],
     "authnTarget": {
       "provider": "Ory/Kratos",
       "role": "Authentication and browser/session lifecycle authority.",
+      "verifiedEmailRule": "When configured, verified email is required before product access.",
       "localFallbackRule": "Local username/password is allowed only for development, bootstrap, and emergency fallback until Ory/Kratos is implemented."
     },
     "authzTarget": {

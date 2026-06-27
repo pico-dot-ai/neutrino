@@ -17,6 +17,7 @@ describe("HostedIdentityProviderAdapter", () => {
         active: true,
         authenticated_at: "2026-05-25T00:00:00.000Z",
         expires_at: "2026-05-25T08:00:00.000Z",
+        verifiable_addresses: [{ value: "admin@pico.ai", verified: true }],
         identity: {
           id: "identity_123",
           traits: {
@@ -68,6 +69,34 @@ describe("HostedIdentityProviderAdapter", () => {
     const adapter = new HostedIdentityProviderAdapter({
       protocol: "saml",
       kratosPublicUrl: "https://kratos.example.com",
+      fetchImpl
+    });
+
+    await expect(
+      adapter.validateBrowserSession({ cookieHeader: "ory_kratos_session=abc" })
+    ).resolves.toBeNull();
+  });
+
+  it("rejects unverified email when configured", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      createJsonResponse({
+        id: "session_123",
+        active: true,
+        authenticated_at: "2026-05-25T00:00:00.000Z",
+        expires_at: "2026-05-25T08:00:00.000Z",
+        identity: {
+          id: "identity_123",
+          traits: {
+            email: "admin@pico.ai",
+            username: "admin"
+          }
+        }
+      })
+    );
+    const adapter = new HostedIdentityProviderAdapter({
+      protocol: "oidc",
+      kratosPublicUrl: "https://kratos.example.com",
+      requireVerifiedEmail: true,
       fetchImpl
     });
 

@@ -22,6 +22,11 @@ export function createHostedIdentityProvider(options: {
   providerId?: string;
   protocol: "oidc" | "saml";
   kratosPublicUrl: string;
+  requireVerifiedEmail?: boolean;
+  onSessionValidated?: (
+    session: import("@neutrino/schema").AuthSession,
+    context: { externalId: string; emailVerified: boolean }
+  ) => Promise<void>;
   fetchImpl?: typeof fetch;
 }) {
   return new HostedIdentityProviderAdapter(options);

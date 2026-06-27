@@ -8,9 +8,15 @@ KRATOS_DB_BOOTSTRAP_JOB_NAME="${KRATOS_DB_BOOTSTRAP_JOB_NAME:-neutrino-kratos-db
 KRATOS_MIGRATE_JOB_NAME="${KRATOS_MIGRATE_JOB_NAME:-neutrino-kratos-migrate}"
 KRATOS_PUBLIC_SERVICE_NAME="${KRATOS_PUBLIC_SERVICE_NAME:-neutrino-kratos-public}"
 KRATOS_ADMIN_SERVICE_NAME="${KRATOS_ADMIN_SERVICE_NAME:-neutrino-kratos-admin}"
+CONFIRM_AUTH_INFRA_APPLY="${CONFIRM_AUTH_INFRA_APPLY:-}"
 
 if [ -z "${PROJECT_ID}" ]; then
   echo "Missing PROJECT_ID." >&2
+  exit 1
+fi
+
+if [ "${CONFIRM_AUTH_INFRA_APPLY}" != "yes" ]; then
+  echo "Refusing auth infra apply. Set CONFIRM_AUTH_INFRA_APPLY=yes after operator approval." >&2
   exit 1
 fi
 

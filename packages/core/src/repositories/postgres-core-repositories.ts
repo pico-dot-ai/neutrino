@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 import { Pool, type PoolConfig } from "pg";
 import type {
   AccessGraphRepository,
+  ActorListFilter,
+  AuditEventListFilter,
+  AuditRepository,
   ArtifactRepository,
   BindingResolver,
   GrantListFilter,
@@ -16,6 +19,7 @@ import type {
 import type {
   ActorKind,
   ActorRecord,
+  AuditEventRecord,
   ArtifactRecord,
   BindingRecord,
   GrantRecord,
@@ -325,6 +329,57 @@ export class PostgresAccessGraphRepository implements AccessGraphRepository {
     };
   }
 
+  async getActor(actorId: string): Promise<ActorRecord | null> {
+    const result = await this.pool.query("SELECT * FROM actors WHERE actor_id = $1;", [actorId]);
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      actorId: row.actor_id,
+      workspaceId: row.workspace_id,
+      kind: row.kind as ActorKind,
+      handle: row.handle,
+      displayName: row.display_name,
+      ...(row.email ? { email: row.email } : {}),
+      createdAt: toIso(row.created_at),
+      updatedAt: toIso(row.updated_at)
+    };
+  }
+
+  async listActors(filter?: ActorListFilter): Promise<ActorRecord[]> {
+    const clauses: string[] = [];
+    const values: unknown[] = [];
+    for (const [column, value] of [
+      ["workspace_id", filter?.workspaceId],
+      ["kind", filter?.kind]
+    ] as const) {
+      if (value !== undefined) {
+        clauses.push(`${column} = $${values.length + 1}`);
+        values.push(value);
+      }
+    }
+
+    const result = await this.pool.query(
+      `
+        SELECT * FROM actors
+        ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+        ORDER BY actor_id ASC;
+      `,
+      values
+    );
+    return result.rows.map((row) => ({
+      actorId: row.actor_id,
+      workspaceId: row.workspace_id,
+      kind: row.kind as ActorKind,
+      handle: row.handle,
+      displayName: row.display_name,
+      ...(row.email ? { email: row.email } : {}),
+      createdAt: toIso(row.created_at),
+      updatedAt: toIso(row.updated_at)
+    }));
+  }
+
   async upsertGroup(record: GroupRecord): Promise<GroupRecord> {
     await ensureWorkspace(this.pool, record.workspaceId);
     const result = await this.pool.query(
@@ -402,6 +457,71 @@ export class PostgresAccessGraphRepository implements AccessGraphRepository {
     };
   }
 
+  async getIdentity(identityId: string): Promise<IdentityRecord | null> {
+    const result = await this.pool.query(
+      "SELECT * FROM identities WHERE identity_id = $1;",
+      [identityId]
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return null;
+    }
+    return {
+      identityId: row.identity_id,
+      workspaceId: row.workspace_id,
+      provider: row.provider,
+      externalId: row.external_id,
+      kind: row.kind as IdentityKind,
+      mapsToType: row.maps_to_type,
+      mapsToId: row.maps_to_id,
+      createdAt: toIso(row.created_at),
+      updatedAt: toIso(row.updated_at)
+    };
+  }
+
+  async listIdentities(filter?: {
+    workspaceId?: string;
+    provider?: string;
+    mapsToType?: IdentityRecord["mapsToType"];
+    mapsToId?: string;
+    externalId?: string;
+  }): Promise<IdentityRecord[]> {
+    const clauses: string[] = [];
+    const values: unknown[] = [];
+    for (const [column, value] of [
+      ["workspace_id", filter?.workspaceId],
+      ["provider", filter?.provider],
+      ["maps_to_type", filter?.mapsToType],
+      ["maps_to_id", filter?.mapsToId],
+      ["external_id", filter?.externalId]
+    ] as const) {
+      if (value !== undefined) {
+        clauses.push(`${column} = $${values.length + 1}`);
+        values.push(value);
+      }
+    }
+
+    const result = await this.pool.query(
+      `
+        SELECT * FROM identities
+        ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+        ORDER BY identity_id ASC;
+      `,
+      values
+    );
+    return result.rows.map((row) => ({
+      identityId: row.identity_id,
+      workspaceId: row.workspace_id,
+      provider: row.provider,
+      externalId: row.external_id,
+      kind: row.kind as IdentityKind,
+      mapsToType: row.maps_to_type,
+      mapsToId: row.maps_to_id,
+      createdAt: toIso(row.created_at),
+      updatedAt: toIso(row.updated_at)
+    }));
+  }
+
   async addGrant(record: GrantRecord): Promise<GrantRecord> {
     await ensureWorkspace(this.pool, record.workspaceId);
     const result = await this.pool.query(
@@ -469,6 +589,87 @@ export class PostgresAccessGraphRepository implements AccessGraphRepository {
       relation: row.relation,
       resourceType: row.resource_type,
       resourceId: row.resource_id,
+      createdAt: toIso(row.created_at)
+    }));
+  }
+}
+
+export class PostgresAuditRepository implements AuditRepository {
+  constructor(private readonly pool: PoolLike) {}
+
+  async writeEvent(record: AuditEventRecord): Promise<AuditEventRecord> {
+    if (record.workspaceId) {
+      await ensureWorkspace(this.pool, record.workspaceId);
+    }
+    if (record.workspaceId && record.actorId) {
+      await ensureActor(this.pool, record.workspaceId, record.actorId);
+    }
+
+    const result = await this.pool.query(
+      `
+        INSERT INTO audit_events (audit_event_id, workspace_id, actor_id, action, resource, metadata, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (audit_event_id)
+        DO UPDATE SET
+          workspace_id = EXCLUDED.workspace_id,
+          actor_id = EXCLUDED.actor_id,
+          action = EXCLUDED.action,
+          resource = EXCLUDED.resource,
+          metadata = EXCLUDED.metadata
+        RETURNING *;
+      `,
+      [
+        record.auditEventId,
+        record.workspaceId ?? null,
+        record.actorId ?? null,
+        record.action,
+        record.resource,
+        record.metadata ?? null,
+        record.createdAt
+      ]
+    );
+    const row = result.rows[0];
+    return {
+      auditEventId: row.audit_event_id,
+      ...(row.workspace_id ? { workspaceId: row.workspace_id } : {}),
+      ...(row.actor_id ? { actorId: row.actor_id } : {}),
+      action: row.action,
+      resource: row.resource,
+      ...(row.metadata ? { metadata: row.metadata } : {}),
+      createdAt: toIso(row.created_at)
+    };
+  }
+
+  async listEvents(filter?: AuditEventListFilter): Promise<AuditEventRecord[]> {
+    const clauses: string[] = [];
+    const values: unknown[] = [];
+    for (const [column, value] of [
+      ["workspace_id", filter?.workspaceId],
+      ["actor_id", filter?.actorId],
+      ["action", filter?.action],
+      ["resource", filter?.resource]
+    ] as const) {
+      if (value !== undefined) {
+        clauses.push(`${column} = $${values.length + 1}`);
+        values.push(value);
+      }
+    }
+
+    const result = await this.pool.query(
+      `
+        SELECT * FROM audit_events
+        ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+        ORDER BY created_at ASC, audit_event_id ASC;
+      `,
+      values
+    );
+    return result.rows.map((row) => ({
+      auditEventId: row.audit_event_id,
+      ...(row.workspace_id ? { workspaceId: row.workspace_id } : {}),
+      ...(row.actor_id ? { actorId: row.actor_id } : {}),
+      action: row.action,
+      resource: row.resource,
+      ...(row.metadata ? { metadata: row.metadata } : {}),
       createdAt: toIso(row.created_at)
     }));
   }
@@ -1248,6 +1449,7 @@ export function createPostgresCoreRepositories(options: PostgresRepositoryOption
 
   return {
     accessGraphRepository: new PostgresAccessGraphRepository(pool),
+    auditRepository: new PostgresAuditRepository(pool),
     manifestRegistry: new PostgresManifestRegistry(pool),
     serviceCatalog: new PostgresServiceCatalog(pool, defaultScope),
     bindingResolver: new PostgresBindingResolver(pool),

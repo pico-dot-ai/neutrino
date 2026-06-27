@@ -1,5 +1,6 @@
 import type {
   ActorRecord,
+  AuditEventRecord,
   ArtifactRecord,
   BindingRecord,
   GrantRecord,
@@ -29,12 +30,41 @@ export type GrantListFilter = {
   resourceId?: string;
 };
 
+export type ActorListFilter = {
+  workspaceId?: string;
+  kind?: ActorRecord["kind"];
+};
+
+export type IdentityListFilter = {
+  workspaceId?: string;
+  provider?: string;
+  mapsToType?: IdentityRecord["mapsToType"];
+  mapsToId?: string;
+  externalId?: string;
+};
+
+export type AuditEventListFilter = {
+  workspaceId?: string;
+  actorId?: string;
+  action?: string;
+  resource?: string;
+};
+
 export interface AccessGraphRepository {
   upsertActor(record: ActorRecord): Promise<ActorRecord>;
+  getActor(actorId: string): Promise<ActorRecord | null>;
+  listActors(filter?: ActorListFilter): Promise<ActorRecord[]>;
   upsertGroup(record: GroupRecord): Promise<GroupRecord>;
   upsertIdentity(record: IdentityRecord): Promise<IdentityRecord>;
+  getIdentity(identityId: string): Promise<IdentityRecord | null>;
+  listIdentities(filter?: IdentityListFilter): Promise<IdentityRecord[]>;
   addGrant(record: GrantRecord): Promise<GrantRecord>;
   listGrants(filter?: GrantListFilter): Promise<GrantRecord[]>;
+}
+
+export interface AuditRepository {
+  writeEvent(record: AuditEventRecord): Promise<AuditEventRecord>;
+  listEvents(filter?: AuditEventListFilter): Promise<AuditEventRecord[]>;
 }
 
 export interface ServiceCatalog {

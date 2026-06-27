@@ -54,6 +54,48 @@ describe("DeveloperConsole", () => {
           }
         });
       }
+      if (url === "/api/platform/auth/users") {
+        return responseJson({
+          users: [
+            {
+              actor: {
+                actorId: "ory:user_1",
+                workspaceId: "workspace_picoai",
+                handle: "user1",
+                displayName: "User One",
+                email: "user1@pico.ai"
+              },
+              identities: [
+                {
+                  identityId: "identity_1",
+                  provider: "ory-kratos",
+                  externalId: "user_1"
+                }
+              ],
+              grants: [
+                {
+                  grantId: "grant_1",
+                  relation: "can_manage",
+                  resourceType: "workspace",
+                  resourceId: "workspace_picoai"
+                }
+              ],
+              audit: [
+                {
+                  auditEventId: "audit_1",
+                  action: "auth.signup",
+                  resource: "auth-user:ory:user_1",
+                  createdAt: "2026-01-01T00:00:01.000Z"
+                }
+              ],
+              lifecycle: {
+                hostedIdentityState: "active",
+                isManaged: true
+              }
+            }
+          ]
+        });
+      }
       if (url === "/api/platform/oauth-apps") {
         return responseJson({
           apps: [{ app_id: "oauth_1", displayName: "OAuth One", appType: "provider" }]
@@ -214,6 +256,33 @@ describe("DeveloperConsole", () => {
       if (url === "/api/auth/logout") {
         return responseJson({ ok: true });
       }
+      if (url === "/api/platform/auth/users/invite") {
+        return responseJson({
+          user: {
+            actor: {
+              actorId: "ory:new_user",
+              workspaceId: "workspace_picoai",
+              handle: "newuser",
+              displayName: "newuser",
+              email: "newuser@pico.ai"
+            },
+            identities: [],
+            grants: [],
+            audit: [],
+            lifecycle: {
+              hostedIdentityState: "active",
+              isManaged: true
+            }
+          }
+        });
+      }
+      if (
+        url === "/api/platform/auth/users/ory%3Auser_1/disable" ||
+        url === "/api/platform/auth/users/ory%3Auser_1/reactivate" ||
+        url === "/api/platform/auth/users/ory%3Auser_1/password-reset"
+      ) {
+        return responseJson({ ok: true });
+      }
       return Promise.reject(new Error(`Unhandled url: ${url}`));
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -242,6 +311,25 @@ describe("DeveloperConsole", () => {
     search.value = "section=not-real";
     render(<DeveloperConsole />);
     await waitFor(() => expect(screen.getAllByText("Latest run").length).toBeGreaterThan(0));
+  });
+
+  it("renders auth section and supports invite flow", async () => {
+    search.value = "section=auth";
+    render(<DeveloperConsole />);
+    await waitFor(() => expect(screen.getByText("Hosted-auth users")).toBeInTheDocument());
+    expect(screen.getByText("user1@pico.ai")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Invite email"), {
+      target: { value: "newuser@pico.ai" }
+    });
+    fireEvent.change(screen.getByLabelText("Invite username"), {
+      target: { value: "newuser" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite User" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Invited newuser@pico.ai.")).toBeInTheDocument()
+    );
   });
 
   it("updates URL when selecting a section", async () => {

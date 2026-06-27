@@ -1,5 +1,7 @@
 version: v1.1.0
 
+dsn: ${KRATOS_DSN}
+
 log:
   level: ${LOG_LEVEL}
   format: text
@@ -8,7 +10,7 @@ log:
 serve:
   public:
     host: 0.0.0.0
-    port: 8080
+    port: ${KRATOS_PUBLIC_PORT}
     base_url: ${KRATOS_PUBLIC_BASE_URL}
     cors:
       enabled: true
@@ -29,7 +31,7 @@ serve:
       allow_credentials: true
   admin:
     host: 0.0.0.0
-    port: 8081
+    port: ${KRATOS_ADMIN_PORT}
     base_url: ${KRATOS_ADMIN_BASE_URL}
 
 selfservice:
@@ -47,6 +49,8 @@ selfservice:
   flows:
     login:
       ui_url: ${WEB_BASE_URL}/login
+    registration:
+      ui_url: ${WEB_BASE_URL}/signup
     logout:
       after:
         default_browser_return_url: ${WEB_BASE_URL}/login
@@ -67,7 +71,7 @@ identity:
   default_schema_id: default
   schemas:
     - id: default
-      url: file:///etc/kratos/schemas/identity.schema.json
+      url: ${KRATOS_IDENTITY_SCHEMA_URL}
 
 secrets:
   cookie:

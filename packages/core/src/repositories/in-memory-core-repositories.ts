@@ -1,8 +1,12 @@
 import type {
   AccessGraphRepository,
+  ActorListFilter,
+  AuditEventListFilter,
+  AuditRepository,
   ArtifactRepository,
   BindingResolver,
   GrantListFilter,
+  IdentityListFilter,
   ManifestRegistry,
   MemoryRepository,
   RunRepository,
@@ -12,6 +16,7 @@ import type {
 } from "@neutrino/ports";
 import type {
   ActorRecord,
+  AuditEventRecord,
   ArtifactRecord,
   BindingRecord,
   GrantRecord,
@@ -53,6 +58,24 @@ export class InMemoryAccessGraphRepository implements AccessGraphRepository {
     return record;
   }
 
+  async getActor(actorId: string): Promise<ActorRecord | null> {
+    return this.actors.get(actorId) ?? null;
+  }
+
+  async listActors(filter?: ActorListFilter): Promise<ActorRecord[]> {
+    return Array.from(this.actors.values())
+      .filter((actor) => {
+        if (filter?.workspaceId && actor.workspaceId !== filter.workspaceId) {
+          return false;
+        }
+        if (filter?.kind && actor.kind !== filter.kind) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => left.actorId.localeCompare(right.actorId));
+  }
+
   async upsertGroup(record: GroupRecord): Promise<GroupRecord> {
     this.groups.set(record.groupId, record);
     return record;
@@ -61,6 +84,33 @@ export class InMemoryAccessGraphRepository implements AccessGraphRepository {
   async upsertIdentity(record: IdentityRecord): Promise<IdentityRecord> {
     this.identities.set(record.identityId, record);
     return record;
+  }
+
+  async getIdentity(identityId: string): Promise<IdentityRecord | null> {
+    return this.identities.get(identityId) ?? null;
+  }
+
+  async listIdentities(filter?: IdentityListFilter): Promise<IdentityRecord[]> {
+    return Array.from(this.identities.values())
+      .filter((identity) => {
+        if (filter?.workspaceId && identity.workspaceId !== filter.workspaceId) {
+          return false;
+        }
+        if (filter?.provider && identity.provider !== filter.provider) {
+          return false;
+        }
+        if (filter?.mapsToType && identity.mapsToType !== filter.mapsToType) {
+          return false;
+        }
+        if (filter?.mapsToId && identity.mapsToId !== filter.mapsToId) {
+          return false;
+        }
+        if (filter?.externalId && identity.externalId !== filter.externalId) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => left.identityId.localeCompare(right.identityId));
   }
 
   async addGrant(record: GrantRecord): Promise<GrantRecord> {
@@ -92,6 +142,39 @@ export class InMemoryAccessGraphRepository implements AccessGraphRepository {
         return true;
       })
       .sort((left, right) => left.grantId.localeCompare(right.grantId));
+  }
+}
+
+export class InMemoryAuditRepository implements AuditRepository {
+  private readonly events = new Map<string, AuditEventRecord>();
+
+  async writeEvent(record: AuditEventRecord): Promise<AuditEventRecord> {
+    this.events.set(record.auditEventId, record);
+    return record;
+  }
+
+  async listEvents(filter?: AuditEventListFilter): Promise<AuditEventRecord[]> {
+    return Array.from(this.events.values())
+      .filter((event) => {
+        if (filter?.workspaceId && event.workspaceId !== filter.workspaceId) {
+          return false;
+        }
+        if (filter?.actorId && event.actorId !== filter.actorId) {
+          return false;
+        }
+        if (filter?.action && event.action !== filter.action) {
+          return false;
+        }
+        if (filter?.resource && event.resource !== filter.resource) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) =>
+        left.createdAt === right.createdAt
+          ? left.auditEventId.localeCompare(right.auditEventId)
+          : left.createdAt.localeCompare(right.createdAt)
+      );
   }
 }
 
@@ -342,6 +425,7 @@ export class InMemoryUsageLedger implements UsageLedger {
 export function createInMemoryCoreRepositories() {
   return {
     accessGraphRepository: new InMemoryAccessGraphRepository(),
+    auditRepository: new InMemoryAuditRepository(),
     manifestRegistry: new InMemoryManifestRegistry(),
     serviceCatalog: new InMemoryServiceCatalog(),
     bindingResolver: new InMemoryBindingResolver(),

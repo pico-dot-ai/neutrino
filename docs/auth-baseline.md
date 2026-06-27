@@ -8,9 +8,11 @@ Authoritative architecture constraints remain in [architecture/contract.json](/U
 ## Accepted Direction
 - Authentication and session management will move to Ory/Kratos first.
 - Local username/password remains a development, bootstrap, and emergency fallback only until the Ory/Kratos path is implemented.
+- Hosted auth must enforce signup eligibility and verified-email requirements before product access when those controls are configured.
 - OpenFGA is the durable runtime authorization model behind `PolicyEngine`.
 - Ory Keto/Permissions is a related Zanzibar-style option, but it is not the selected runtime authorization engine.
 - Authn and authz will be implemented as separate steps so login/session failures and permission-decision failures are isolated during rollout.
+- Tenant user lifecycle, default grants, and audit/readback live in Neutrino actor, identity, grant, and audit records rather than Kratos traits, metadata, or public admin surfaces.
 
 ## OpenFGA Model Baseline
 The initial OpenFGA model should represent Neutrino platform concepts directly:

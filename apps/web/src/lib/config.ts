@@ -21,10 +21,30 @@ const authPolicyEnvSchema = z.object({
     .string()
     .min(1)
     .default("/self-service/login/browser"),
+  ORY_KRATOS_BROWSER_REGISTRATION_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/registration/browser"),
   ORY_KRATOS_BROWSER_LOGOUT_PATH: z
     .string()
     .min(1)
     .default("/self-service/logout/browser"),
+  ORY_KRATOS_BROWSER_RECOVERY_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/recovery/browser"),
+  ORY_KRATOS_BROWSER_VERIFICATION_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/verification/browser"),
+  ORY_KRATOS_BROWSER_SETTINGS_PATH: z
+    .string()
+    .min(1)
+    .default("/self-service/settings/browser"),
+  AUTH_REQUIRE_VERIFIED_EMAIL: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value !== "false"),
   APP_SESSION_SECRET: z.string().min(1).optional(),
   APP_SESSION_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 8),
   APP_AUTH_ENABLED: z
@@ -63,7 +83,14 @@ export function getAuthPolicyEnv() {
     ORY_KRATOS_PROTOCOL: process.env.ORY_KRATOS_PROTOCOL,
     ORY_KRATOS_PROVIDER_ID: process.env.ORY_KRATOS_PROVIDER_ID,
     ORY_KRATOS_BROWSER_LOGIN_PATH: process.env.ORY_KRATOS_BROWSER_LOGIN_PATH,
+    ORY_KRATOS_BROWSER_REGISTRATION_PATH:
+      process.env.ORY_KRATOS_BROWSER_REGISTRATION_PATH,
     ORY_KRATOS_BROWSER_LOGOUT_PATH: process.env.ORY_KRATOS_BROWSER_LOGOUT_PATH,
+    ORY_KRATOS_BROWSER_RECOVERY_PATH: process.env.ORY_KRATOS_BROWSER_RECOVERY_PATH,
+    ORY_KRATOS_BROWSER_VERIFICATION_PATH:
+      process.env.ORY_KRATOS_BROWSER_VERIFICATION_PATH,
+    ORY_KRATOS_BROWSER_SETTINGS_PATH: process.env.ORY_KRATOS_BROWSER_SETTINGS_PATH,
+    AUTH_REQUIRE_VERIFIED_EMAIL: process.env.AUTH_REQUIRE_VERIFIED_EMAIL,
     APP_SESSION_SECRET: process.env.APP_SESSION_SECRET ?? fallbackSessionSecret,
     APP_SESSION_TTL_SECONDS: process.env.APP_SESSION_TTL_SECONDS,
     APP_AUTH_ENABLED: process.env.APP_AUTH_ENABLED

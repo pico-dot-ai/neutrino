@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { LanguageModelProvider } from "@neutrino/ports";
 import type { GenerateRequest, GenerateResponse } from "@neutrino/schema";
 import { createAppHandler } from "./http";
+import type { ApiEnv } from "./env";
 
 class FakeProvider implements LanguageModelProvider {
   async generate(request: GenerateRequest) {
@@ -24,16 +25,26 @@ class FailingProvider implements LanguageModelProvider {
   }
 }
 
+function createTestEnv(overrides: Partial<ApiEnv> = {}): ApiEnv {
+  return {
+    PORT: 0,
+    OPENAI_API_KEY: "test",
+    OPENAI_MODEL: "gpt-5-mini",
+    API_PROXY_SHARED_SECRET: "secret",
+    AUTH_SIGNUP_ALLOWED_EMAILS: "",
+    AUTH_SIGNUP_ALLOWED_DOMAINS: "",
+    AUTH_REQUIRE_VERIFIED_EMAIL: true,
+    AUTH_DEFAULT_WORKSPACE_ID: "workspace_picoai",
+    AUTH_INITIAL_GRANT_RELATION: "can_manage",
+    ...overrides
+  };
+}
+
 describe("createHttpServer", () => {
   it("returns health status", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(new Request("http://127.0.0.1/health"));
@@ -45,12 +56,7 @@ describe("createHttpServer", () => {
   it("streams chat events when authorized", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -77,12 +83,7 @@ describe("createHttpServer", () => {
   it("supports explicit runtime selection on chat requests", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -111,12 +112,7 @@ describe("createHttpServer", () => {
   it("returns SSE error when runtime selection cannot resolve", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -146,12 +142,7 @@ describe("createHttpServer", () => {
   it("exposes persisted Dev Agent runtime runs through authorized control-plane endpoint", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     await handler(
@@ -211,12 +202,7 @@ describe("createHttpServer", () => {
   it("returns unauthorized for runtime run readback without proxy secret", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -229,15 +215,83 @@ describe("createHttpServer", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized." });
   });
 
-  it("captures failed runtime runs with runtime.failed traces", async () => {
+  it("syncs hosted auth sessions and exposes managed users through control-plane auth endpoints", async () => {
     const handler = createAppHandler({
-      aiProvider: new FailingProvider(),
+      aiProvider: new FakeProvider(),
       env: {
         PORT: 0,
         OPENAI_API_KEY: "test",
         OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
+        API_PROXY_SHARED_SECRET: "secret",
+        AUTH_DEFAULT_WORKSPACE_ID: "workspace_picoai",
+        AUTH_INITIAL_GRANT_RELATION: "can_manage",
+        AUTH_SIGNUP_ALLOWED_EMAILS: "",
+        AUTH_SIGNUP_ALLOWED_DOMAINS: "",
+        AUTH_REQUIRE_VERIFIED_EMAIL: true
       }
+    });
+
+    const syncResponse = await handler(
+      new Request("http://127.0.0.1/v1/auth/session/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-proxy-secret": "secret"
+        },
+        body: JSON.stringify({
+          actorId: "ory:user_1",
+          email: "user1@pico.ai",
+          username: "user1",
+          emailVerified: true,
+          issuedAt: "2026-01-01T00:00:00.000Z",
+          expiresAt: "2026-01-01T08:00:00.000Z"
+        })
+      })
+    );
+
+    expect(syncResponse.status).toBe(200);
+
+    const usersResponse = await handler(
+      new Request("http://127.0.0.1/v1/control-plane/auth/users", {
+        method: "GET",
+        headers: {
+          "x-api-proxy-secret": "secret",
+          "x-pico-admin-email": "admin@pico.ai",
+          "x-pico-admin-actor-id": "local:admin"
+        }
+      })
+    );
+
+    expect(usersResponse.status).toBe(200);
+    await expect(usersResponse.json()).resolves.toEqual({
+      users: expect.arrayContaining([
+        expect.objectContaining({
+          actor: expect.objectContaining({
+            actorId: "ory:user_1",
+            email: "user1@pico.ai"
+          }),
+          identities: expect.arrayContaining([
+            expect.objectContaining({
+              provider: "ory-kratos",
+              externalId: "user_1"
+            })
+          ]),
+          grants: expect.arrayContaining([
+            expect.objectContaining({
+              relation: "can_manage",
+              resourceType: "workspace",
+              resourceId: "workspace_picoai"
+            })
+          ])
+        })
+      ])
+    });
+  });
+
+  it("captures failed runtime runs with runtime.failed traces", async () => {
+    const handler = createAppHandler({
+      aiProvider: new FailingProvider(),
+      env: createTestEnv()
     });
 
     const chatResponse = await handler(
@@ -289,12 +343,7 @@ describe("createHttpServer", () => {
   it("lists manifest records through authorized control-plane endpoint", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -323,12 +372,7 @@ describe("createHttpServer", () => {
   it("filters manifests by kind and resourceId", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -358,12 +402,7 @@ describe("createHttpServer", () => {
   it("rejects manifest endpoint requests without proxy secret", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -379,12 +418,7 @@ describe("createHttpServer", () => {
   it("registers manifests, lists app/service/binding inventory, and invokes an app action", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const contextResponse = await handler(
@@ -515,12 +549,7 @@ describe("createHttpServer", () => {
   it("allows app action invocation for any authenticated actor", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -544,12 +573,7 @@ describe("createHttpServer", () => {
   it("registers binding manifests through control-plane endpoint", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -594,12 +618,7 @@ describe("createHttpServer", () => {
   it("registers an OAuth app through control-plane endpoint", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -635,12 +654,7 @@ describe("createHttpServer", () => {
   it("allows control-plane writes for any authenticated actor", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(
@@ -675,12 +689,7 @@ describe("createHttpServer", () => {
   it("rejects control-plane requests without proxy secret", async () => {
     const handler = createAppHandler({
       aiProvider: new FakeProvider(),
-      env: {
-        PORT: 0,
-        OPENAI_API_KEY: "test",
-        OPENAI_MODEL: "gpt-5-mini",
-        API_PROXY_SHARED_SECRET: "secret"
-      }
+      env: createTestEnv()
     });
 
     const response = await handler(

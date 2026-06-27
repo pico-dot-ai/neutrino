@@ -13,34 +13,10 @@ import {
   ShieldCheck
 } from "lucide-react";
 import { Button, Input } from "@neutrino/ui";
+import { useKratosFlow } from "./kratos-flow-client";
 
 type AuthMethod = "password" | "google" | "apple" | "github" | "sso";
 type AuthStep = "start" | "email" | "password" | "provider";
-
-type KratosUiNode = {
-  attributes?: {
-    name?: string;
-    type?: string;
-    value?: string;
-    required?: boolean;
-    disabled?: boolean;
-  };
-  meta?: {
-    label?: {
-      text?: string;
-    };
-  };
-  group?: string;
-};
-
-type KratosLoginFlow = {
-  ui?: {
-    action?: string;
-    method?: string;
-    nodes?: KratosUiNode[];
-    messages?: Array<{ text?: string }>;
-  };
-};
 
 const authMethods: Array<{
   id: Exclude<AuthMethod, "password">;
@@ -118,49 +94,16 @@ export function LoginForm(props: {
   const [step, setStep] = React.useState<AuthStep>("start");
   const [error, setError] = React.useState<string | null>(props.initialError ?? null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [kratosFlow, setKratosFlow] = React.useState<KratosLoginFlow | null>(null);
-  const [kratosError, setKratosError] = React.useState<string | null>(null);
   const activeCopy = methodCopy[method];
   const isKratosMode = Boolean(props.kratosFlow);
+  const { error: kratosError, flow: kratosFlow } = useKratosFlow({
+    enabled: isKratosMode,
+    flowId: props.kratosFlow?.flowId ?? "local-flow",
+    kind: "login",
+    kratosPublicUrl: props.kratosFlow?.kratosPublicUrl ?? "http://127.0.0.1"
+  });
 
-  React.useEffect(() => {
-    const flowConfig = props.kratosFlow;
-    if (!flowConfig) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const loadFlow = async () => {
-      try {
-        const url = new URL("/self-service/login/flows", flowConfig.kratosPublicUrl);
-        url.searchParams.set("id", flowConfig.flowId);
-
-        const response = await fetch(url.toString(), {
-          method: "GET",
-          credentials: "include",
-          signal: controller.signal
-        });
-
-        if (!response.ok) {
-          setKratosError("Unable to load sign-in session. Please refresh and try again.");
-          return;
-        }
-
-        setKratosFlow((await response.json()) as KratosLoginFlow);
-      } catch {
-        if (!controller.signal.aborted) {
-          setKratosError("Unable to load sign-in session. Please refresh and try again.");
-        }
-      }
-    };
-
-    void loadFlow();
-
-    return () => controller.abort();
-  }, [props.kratosFlow]);
-
-  const kratosNodes = kratosFlow?.ui?.nodes ?? [];
+  const kratosNodes = isKratosMode ? kratosFlow?.ui?.nodes ?? [] : [];
   const kratosHiddenInputs = kratosNodes.filter(
     (node) => node.attributes?.type === "hidden" && node.attributes.name
   );
@@ -194,15 +137,17 @@ export function LoginForm(props: {
     ));
   }
 
-  function renderProviderIcon(node: KratosUiNode) {
-    const providerLabel = node.meta?.label?.text?.toLowerCase() ?? "";
-    const providerValue = node.attributes?.value?.toLowerCase() ?? "";
-
+  function renderProviderIcon(providerLabel: string, providerValue: string) {
     if (providerLabel.includes("google") || providerValue.includes("google")) {
       return <Image src="/brand/google-g-logo.png" alt="" width={20} height={20} />;
     }
-
-    return null;
+    if (providerLabel.includes("apple") || providerValue.includes("apple")) {
+      return <Image src="/brand/apple-logo-siwa-black-cropped.svg" alt="" width={24} height={24} />;
+    }
+    if (providerLabel.includes("github") || providerValue.includes("github")) {
+      return <Image src="/brand/github-invertocat-black.svg" alt="" width={20} height={20} />;
+    }
+    return <Building2 aria-hidden="true" className="h-4 w-4" />;
   }
 
   function selectPassword() {
@@ -302,9 +247,12 @@ export function LoginForm(props: {
                     <label className="text-sm font-medium text-foreground" htmlFor="start-username">
                       Email
                     </label>
-                    <span aria-hidden="true" className="text-sm font-medium opacity-0">
+                    <Link
+                      className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                      href="/recovery"
+                    >
                       Forgot password?
-                    </span>
+                    </Link>
                   </div>
                   <Input
                     aria-label="Email address"
@@ -324,9 +272,12 @@ export function LoginForm(props: {
                     <label className="text-sm font-medium text-foreground" htmlFor="start-password">
                       Password
                     </label>
-                    <button className="text-sm font-medium text-muted-foreground transition hover:text-foreground" type="button">
+                    <Link
+                      className="text-sm font-medium text-muted-foreground transition hover:text-foreground"
+                      href="/recovery"
+                    >
                       Forgot password?
-                    </button>
+                    </Link>
                   </div>
                   <Input
                     aria-label="Password"
@@ -391,35 +342,39 @@ export function LoginForm(props: {
                 </div>
               ) : kratosAction && kratosOidcButtons.length > 0 ? (
                 <div className="space-y-2.5">
-                  {kratosOidcButtons.map((node) => (
-                    <form action={kratosAction} key={`${node.attributes?.name}-${node.attributes?.value}`} method={kratosMethod}>
-                      {renderKratosHiddenInputs(`oidc-${node.attributes?.value}`)}
-                      <button
-                        className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
-                        name={node.attributes?.name}
-                        type="submit"
-                        value={node.attributes?.value}
-                      >
-                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                          <span className="grid grid-cols-[20px_auto] items-center gap-3">
-                            <span className="grid h-5 w-5 place-items-center">
-                              {renderProviderIcon(node)}
-                            </span>
-                            <span className="inline-flex h-5 items-center leading-5">
-                              {node.meta?.label?.text ?? node.attributes?.value ?? "Continue"}
+                  {kratosOidcButtons.map((node) => {
+                    const providerLabel = node.meta?.label?.text?.toLowerCase() ?? "";
+                    const providerValue = node.attributes?.value?.toLowerCase() ?? "";
+                    return (
+                      <form action={kratosAction} key={`${node.attributes?.name}-${node.attributes?.value}`} method={kratosMethod}>
+                        {renderKratosHiddenInputs(`oidc-${node.attributes?.value}`)}
+                        <button
+                          className="relative flex h-10 w-full items-center rounded-full border border-border bg-white px-4 text-sm font-medium leading-none text-foreground shadow-sm transition hover:border-border-strong hover:bg-secondary"
+                          name={node.attributes?.name}
+                          type="submit"
+                          value={node.attributes?.value}
+                        >
+                          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <span className="grid grid-cols-[20px_auto] items-center gap-3">
+                              <span className="grid h-5 w-5 place-items-center">
+                                {renderProviderIcon(providerLabel, providerValue)}
+                              </span>
+                              <span className="inline-flex h-5 items-center leading-5">
+                                {node.meta?.label?.text ?? node.attributes?.value ?? "Continue"}
+                              </span>
                             </span>
                           </span>
-                        </span>
-                      </button>
-                    </form>
-                  ))}
+                        </button>
+                      </form>
+                    );
+                  })}
                 </div>
               ) : null}
 
               <p className="mt-7 text-center text-sm text-muted-foreground">
                 New to picoAI?{" "}
-                <Link className="font-medium text-foreground underline underline-offset-4" href="/">
-                  Sign up
+                <Link className="font-medium text-foreground underline underline-offset-4" href="/signup">
+                  Create an account
                 </Link>
               </p>
             </div>

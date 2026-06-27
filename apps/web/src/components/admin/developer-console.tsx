@@ -163,8 +163,41 @@ type ArtifactRecord = {
   createdAt: string;
 };
 
+type AuthUserRecord = {
+  actor: {
+    actorId: string;
+    workspaceId: string;
+    handle: string;
+    displayName: string;
+    email?: string;
+  };
+  identities: Array<{
+    identityId: string;
+    provider: string;
+    externalId: string;
+  }>;
+  grants: Array<{
+    grantId: string;
+    relation: string;
+    resourceType: string;
+    resourceId: string;
+  }>;
+  audit: Array<{
+    auditEventId: string;
+    action: string;
+    resource: string;
+    createdAt: string;
+    metadata?: Record<string, unknown>;
+  }>;
+  lifecycle: {
+    hostedIdentityState: string;
+    isManaged: boolean;
+  };
+};
+
 type SectionId =
   | "overview"
+  | "auth"
   | "apps"
   | "services"
   | "bindings"
@@ -182,6 +215,7 @@ type SectionDef = {
 
 const SECTIONS: SectionDef[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "auth", label: "Auth", icon: Settings },
   { id: "apps", label: "Apps", icon: Blocks },
   { id: "services", label: "Services", icon: Settings },
   { id: "bindings", label: "Bindings", icon: Cable },
@@ -246,6 +280,7 @@ export function DeveloperConsole() {
   const [runtimeMemory, setRuntimeMemory] = React.useState<MemoryRecord[]>([]);
   const [runtimeArtifacts, setRuntimeArtifacts] = React.useState<ArtifactRecord[]>([]);
   const [manifestRecords, setManifestRecords] = React.useState<ManifestRecord[]>([]);
+  const [authUsers, setAuthUsers] = React.useState<AuthUserRecord[]>([]);
   const [message, setMessage] = React.useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isInvoking, setIsInvoking] = React.useState(false);
@@ -298,6 +333,8 @@ export function DeveloperConsole() {
     serviceId: "",
     capabilityId: ""
   });
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteUsername, setInviteUsername] = React.useState("");
 
   const appManifestPayload = React.useMemo(
     () => ({
@@ -387,6 +424,7 @@ export function DeveloperConsole() {
       const [
         me,
         contextPayload,
+        authPayload,
         appList,
         capabilityList,
         platformApps,
@@ -397,6 +435,7 @@ export function DeveloperConsole() {
       ] = await Promise.all([
         requestJson<ActorPayload>("/api/auth/me"),
         requestJson<ContextPayload>("/api/platform/context"),
+        requestJson<{ users: AuthUserRecord[] }>("/api/platform/auth/users"),
         requestJson<{ apps: OAuthAppRecord[] }>("/api/platform/oauth-apps"),
         requestJson<{ capabilities: CapabilityRecord[] }>("/api/platform/capabilities"),
         requestJson<{ apps: AppInventoryRecord[] }>("/api/platform/apps"),
@@ -408,6 +447,7 @@ export function DeveloperConsole() {
 
       setActor(me.actor);
       setContext(contextPayload);
+      setAuthUsers(authPayload.users ?? []);
       setOauthApps(appList.apps);
       setCapabilities(capabilityList.capabilities);
       setApps(platformApps.apps);
@@ -604,6 +644,45 @@ export function DeveloperConsole() {
     router.push("/login");
   }
 
+  async function inviteAuthUser(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage(null);
+    try {
+      const payload = await requestJson<{ user: AuthUserRecord }>("/api/platform/auth/users/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteEmail,
+          ...(inviteUsername ? { username: inviteUsername } : {})
+        })
+      });
+      setMessage(`Invited ${payload.user.actor.email ?? payload.user.actor.actorId}.`);
+      setInviteEmail("");
+      setInviteUsername("");
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to invite user.");
+    }
+  }
+
+  async function postAuthUserAction(actorId: string, suffix: "disable" | "reactivate" | "password-reset") {
+    setMessage(null);
+    try {
+      await requestJson(`/api/platform/auth/users/${encodeURIComponent(actorId)}/${suffix}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      setMessage(
+        suffix === "password-reset"
+          ? "Password reset initiated."
+          : `${suffix === "disable" ? "Disabled" : "Reactivated"} ${actorId}.`
+      );
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to update user.");
+    }
+  }
+
   const lastRun = runtimeRuns[0]?.run;
   const activeSectionDef = SECTIONS.find((section) => section.id === activeSection) ?? SECTIONS[0];
 
@@ -730,6 +809,105 @@ export function DeveloperConsole() {
           <Button className="mt-4" type="submit">
             <Upload className="mr-2 h-4 w-4" />
             Register App Manifest
+          </Button>
+        </form>
+      </section>
+    );
+  }
+
+  function renderAuth() {
+    return (
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.42fr)]">
+        <div className={workspaceSurfaceClass}>
+          <div className="border-b border-border/70 px-4 py-4 sm:px-5">
+            <h2 className="text-base font-semibold">Hosted-auth users</h2>
+          </div>
+          <div>
+            {authUsers.map((user) => (
+              <article className={workspaceRowClass} key={user.actor.actorId}>
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="break-words font-medium">
+                      {user.actor.displayName || user.actor.handle}
+                    </p>
+                    <p className="mt-1 break-all text-muted-foreground">
+                      {user.actor.email ?? user.actor.actorId}
+                    </p>
+                    <p className="mt-1 break-words text-muted-foreground">
+                      {user.identities.map((identity) => `${identity.provider}:${identity.externalId}`).join(" · ") || "No hosted identity"}
+                    </p>
+                    <p className="mt-1 break-words text-muted-foreground">
+                      {user.grants.map((grant) => `${grant.relation} ${grant.resourceType}`).join(" · ") || "No grants"}
+                    </p>
+                  </div>
+                  <Badge className="w-fit border-border bg-white text-foreground">
+                    {user.lifecycle.hostedIdentityState}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => void postAuthUserAction(user.actor.actorId, "password-reset")}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Reset Password
+                  </Button>
+                  <Button
+                    onClick={() => void postAuthUserAction(user.actor.actorId, "disable")}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Disable
+                  </Button>
+                  <Button
+                    onClick={() => void postAuthUserAction(user.actor.actorId, "reactivate")}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Reactivate
+                  </Button>
+                </div>
+                {user.audit.length > 0 ? (
+                  <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                    {user.audit.slice(-3).reverse().map((event) => (
+                      <p key={event.auditEventId}>
+                        {event.action} · {new Date(event.createdAt).toLocaleString()}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </div>
+        <form className={workspacePanelClass} onSubmit={inviteAuthUser}>
+          <h2 className="text-base font-semibold">Invite managed user</h2>
+          <Separator className="my-4" />
+          <div className="grid gap-3">
+            <Input
+              aria-label="Invite email"
+              className={workspaceInputClass}
+              onChange={(event) => setInviteEmail(event.target.value)}
+              placeholder="user@company.com"
+              value={inviteEmail}
+            />
+            <Input
+              aria-label="Invite username"
+              className={workspaceInputClass}
+              onChange={(event) => setInviteUsername(event.target.value)}
+              placeholder="username"
+              value={inviteUsername}
+            />
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Invite creates a hosted identity, durable actor mapping, default grant, and password recovery path without exposing tokens in the UI.
+          </p>
+          <Button className="mt-4" type="submit">
+            <Send className="mr-2 h-4 w-4" />
+            Invite User
           </Button>
         </form>
       </section>
@@ -1116,6 +1294,8 @@ export function DeveloperConsole() {
     switch (activeSection) {
       case "overview":
         return renderOverview();
+      case "auth":
+        return renderAuth();
       case "apps":
         return renderApps();
       case "services":

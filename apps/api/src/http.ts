@@ -24,6 +24,11 @@ import {
 } from "@neutrino/core";
 import { createPlatformControlPlane } from "@neutrino/platform-gateway";
 import type { ApiEnv } from "./env";
+import {
+  createAuthControlPlane,
+  inviteAuthUserSchema,
+  syncAuthSessionSchema
+} from "./auth-control-plane";
 import { createArtifactChecksum, createObjectStorage } from "./object-storage";
 
 const chatRequestSchema = z.object({
@@ -281,6 +286,10 @@ export function createAppHandler(options: {
     runRepository: core.runRepository,
     traceRepository: core.traceRepository,
     usageLedger: core.usageLedger
+  });
+  const authControlPlane = createAuthControlPlane({
+    core,
+    env: options.env
   });
   const objectStorage = options.objectStorage ?? createObjectStorage(options.env);
   let devAgentBootstrapPromise: Promise<void> | null = null;
@@ -596,6 +605,16 @@ export function createAppHandler(options: {
         return sse(events);
       }
 
+      if (request.method === "POST" && pathname === "/v1/auth/session/sync") {
+        if (!isAuthorized(request, options.env)) {
+          return json(401, { error: "Unauthorized." });
+        }
+
+        const payload = syncAuthSessionSchema.parse(await request.json());
+        const user = await authControlPlane.syncSession(payload);
+        return json(200, { user });
+      }
+
       const actionInvokeMatch = pathname.match(/^\/v1\/apps\/([^/]+)\/actions\/([^/]+)\/invoke$/);
       if (request.method === "POST" && actionInvokeMatch) {
         if (!isAuthorized(request, options.env)) {
@@ -700,6 +719,65 @@ export function createAppHandler(options: {
               email: adminContext.email
             }
           });
+        }
+
+        if (request.method === "GET" && pathname === "/v1/control-plane/auth/users") {
+          const users = await authControlPlane.listUsers();
+          return json(200, { users });
+        }
+
+        if (request.method === "POST" && pathname === "/v1/control-plane/auth/users/invite") {
+          const payload = inviteAuthUserSchema.parse(await request.json());
+          const user = await authControlPlane.inviteUser(adminContext.actorId ?? undefined, payload);
+          return json(200, { user });
+        }
+
+        const authUserMatch = pathname.match(/^\/v1\/control-plane\/auth\/users\/([^/]+)$/);
+        if (request.method === "GET" && authUserMatch) {
+          const actorId = decodeURIComponent(authUserMatch[1] ?? "");
+          const user = await authControlPlane.getUser(actorId);
+          if (!user) {
+            return json(404, { error: "Unknown actor." });
+          }
+          return json(200, { user });
+        }
+
+        const authDisableMatch = pathname.match(
+          /^\/v1\/control-plane\/auth\/users\/([^/]+)\/disable$/
+        );
+        if (request.method === "POST" && authDisableMatch) {
+          const actorId = decodeURIComponent(authDisableMatch[1] ?? "");
+          const user = await authControlPlane.setUserState(
+            adminContext.actorId ?? undefined,
+            actorId,
+            "inactive"
+          );
+          return json(200, { user });
+        }
+
+        const authReactivateMatch = pathname.match(
+          /^\/v1\/control-plane\/auth\/users\/([^/]+)\/reactivate$/
+        );
+        if (request.method === "POST" && authReactivateMatch) {
+          const actorId = decodeURIComponent(authReactivateMatch[1] ?? "");
+          const user = await authControlPlane.setUserState(
+            adminContext.actorId ?? undefined,
+            actorId,
+            "active"
+          );
+          return json(200, { user });
+        }
+
+        const authResetMatch = pathname.match(
+          /^\/v1\/control-plane\/auth\/users\/([^/]+)\/password-reset$/
+        );
+        if (request.method === "POST" && authResetMatch) {
+          const actorId = decodeURIComponent(authResetMatch[1] ?? "");
+          const result = await authControlPlane.triggerPasswordReset(
+            adminContext.actorId ?? undefined,
+            actorId
+          );
+          return json(200, result);
         }
 
         if (request.method === "GET" && pathname === "/v1/control-plane/oauth-apps") {

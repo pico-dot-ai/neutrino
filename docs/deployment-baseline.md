@@ -4,12 +4,15 @@ Operational issue history and recurring fixes are tracked in [docs/ops-known-iss
 
 This document is both the human deployment runbook and the coding-agent operating guide. Deployment work should be possible from this repo after the operator has provided Google Cloud, GitHub, Vercel, and npm/auth access as needed.
 
+For scenario-by-scenario operating procedures across local, staging, production, promotion, rollback, and secret rotation, use [docs/deployment-runbook.md](deployment-runbook.md).
+
 ## Source of Truth
 
 - Web runtime: [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web), deployed to Vercel.
 - API runtime: [apps/api](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api), deployed to Cloud Run from [apps/api/Dockerfile](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/api/Dockerfile).
 - API deploy worker: [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
 - Google Cloud infrastructure: [infra/terraform/cloud-run](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/infra/terraform/cloud-run).
+- Deployment runbook: [docs/deployment-runbook.md](deployment-runbook.md).
 - Architecture contract: [architecture/contract.json](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/architecture/contract.json).
 - Generated architecture doc: [docs/architecture-canonical.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/architecture-canonical.md).
 - Requirements and accepted constraints: [docs/requirements-baseline.md](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/docs/requirements-baseline.md).
@@ -22,12 +25,16 @@ npm run architecture:render
 
 ## Deployment Model
 
-- Pushes to `main` are the intended production deployment path.
+- Pushes to `main` are the current production deployment path for the Vercel web app.
+- Branch pushes are the current preview deployment path for the Vercel web app.
+- Production API deploys are currently operated with browser-authenticated `gcloud` and Cloud Build, either from the current checkout or through the existing Cloud Build trigger.
+- GitHub-first orchestration for GCP/API/Auth is a roadmap target, not the current operating assumption.
 - Vercel owns the frontend deploy for [apps/web](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/apps/web).
 - Cloud Build owns the API image build and Cloud Run rollout.
 - Terraform owns the Cloud Run service contract, migration job, secret bindings, resource limits, probes, ingress, IAM, and optional self-managed Postgres resources.
 - Cloud Build should roll images forward only. Do not hand-configure Cloud Run environment variable names, probes, resource limits, or IAM in the console for normal operation.
 - Secrets are intentionally outside git and must be created or rotated manually through Vercel and Google Secret Manager.
+- Staging and true staging-to-production artifact promotion are not currently executable from repo docs alone. Track that work in Linear under `THU-66` and `THU-68`.
 
 ## Required Access
 
@@ -87,6 +94,9 @@ Set these in Vercel for the production web deployment:
 - `APP_AUTH_ENABLED`
 - `AUTH_PROVIDER`
 - `AUTH_LOCAL_MODE`
+- `AUTH_REQUIRE_VERIFIED_EMAIL`
+- `AUTH_SIGNUP_ALLOWED_EMAILS`
+- `AUTH_SIGNUP_ALLOWED_DOMAINS`
 - `ORY_KRATOS_PUBLIC_URL`
 - `ORY_KRATOS_ADMIN_URL`
 - `NEXT_PUBLIC_APP_NAME`
@@ -103,8 +113,11 @@ For Kratos-backed production auth:
 
 - `AUTH_PROVIDER=ory-kratos`
 - `AUTH_LOCAL_MODE=emergency` (fallback posture only)
+- `AUTH_REQUIRE_VERIFIED_EMAIL=true`
 - `ORY_KRATOS_PUBLIC_URL=https://auth.pico.ai`
 - `ORY_KRATOS_ADMIN_URL=<internal-admin-url>`
+- `AUTH_SIGNUP_ALLOWED_EMAILS=<optional exact-email allowlist>`
+- `AUTH_SIGNUP_ALLOWED_DOMAINS=<optional domain allowlist>`
 
 Kratos identity data policy for this repo:
 
@@ -131,11 +144,15 @@ Vercel CLI checks:
 
 ```sh
 vercel env ls
-vercel deploy --prod
 vercel ls
 ```
 
-If GitHub-to-Vercel auto deploy is configured, pushing or merging to the production branch should be enough. Use the Vercel dashboard or `vercel ls` to confirm the production deployment.
+Normal Vercel deployment should happen through GitHub:
+
+- push a branch for preview
+- merge or push to `main` for production
+
+Use Vercel CLI for inspection/debugging, not as the normal production deployment path.
 
 ### Auth Direction
 
@@ -261,12 +278,10 @@ Use [infra/terraform/cloud-run/terraform.tfvars.example](/Users/kevinrochowski/D
 Kratos rollout execution:
 
 ```sh
-export PROJECT_ID=neutrino-491317
-export REGION=us-central1
-scripts/kratos-deploy-gcp.sh
+PROJECT_ID=neutrino-491317 REGION=us-central1 CONFIRM_AUTH_INFRA_APPLY=yes scripts/kratos-deploy-gcp.sh
 ```
 
-This script applies Terraform, bootstraps the Kratos database/user on the existing Postgres VM, runs `kratos migrate sql`, and prints Kratos public/admin service URLs.
+This script applies Terraform, bootstraps the Kratos database/user on the existing Postgres VM, runs `kratos migrate sql`, and prints Kratos public/admin service URLs. It refuses to run unless `CONFIRM_AUTH_INFRA_APPLY=yes` is set after explicit operator approval.
 
 Map `auth.pico.ai` to Kratos public service:
 
@@ -308,7 +323,13 @@ Required Cloud Build trigger substitutions:
 
 The Terraform-managed v2 trigger (`neutrino-api-main-deploy`) watches pushes to `main` on `pico-dot-ai/neutrino` when `enable_github_deploy_trigger = true`. It uses repository events from `projects/neutrino-491317/locations/us-central1/connections/neutrino-github/repositories/neutrino`. Its file filter must include API source, shared packages, migrations, workspace manifests, TypeScript config, and [cloudbuild.yaml](/Users/kevinrochowski/Documents/Developer/repos/pico/neutrino/cloudbuild.yaml).
 
-Manual Cloud Build deploy from the current checkout:
+Agent-friendly production API deploy from the current checkout:
+
+```sh
+CONFIRM_PRODUCTION_API_DEPLOY=yes npm run deploy:api:prod
+```
+
+This wraps validation, production secret-version checks, Cloud Build submit, and API verification. Use the raw Cloud Build command only for debugging the wrapper:
 
 ```sh
 gcloud builds submit . \
@@ -324,6 +345,18 @@ gcloud builds triggers run neutrino-api-main-deploy --region=us-central1 --branc
 ```
 
 The Cloud Build service account must be able to build and push to Artifact Registry, update Cloud Run, execute Cloud Run jobs, read Secret Manager values through runtime bindings, and act as the Cloud Run runtime service account if a non-default runtime service account is configured.
+
+Current agent-friendly production API flow:
+
+1. Complete browser auth with `gcloud auth login` and `gcloud auth application-default login`.
+2. Set the project with `gcloud config set project neutrino-491317`.
+3. Run pre-deploy validation.
+4. Confirm required Secret Manager secret versions exist without printing values with `npm run secrets:prod:check`.
+5. Run Cloud Build from the current checkout with `CONFIRM_PRODUCTION_API_DEPLOY=yes npm run deploy:api:prod` or trigger `neutrino-api-main-deploy`.
+6. Verify `/health`, `/readyz`, latest revision, latest migration job execution, and Cloud Build status with `npm run verify:api:prod`.
+7. Record sanitized evidence in Linear.
+
+Do not claim a staging promotion for this path. Until `THU-66` and `THU-68` are complete, this is a direct production API deployment.
 
 ## Data Platform
 
@@ -496,6 +529,12 @@ Production verification:
 - Authenticated admin routes load.
 - The chat path reaches Cloud Run through the Next.js API proxy.
 
+Current web deployment operation:
+
+- For preview, push the branch and use the Vercel preview deployment connected to GitHub.
+- For production, merge or push to `main` and use the Vercel production deployment connected to GitHub.
+- Use `vercel ls` only to inspect current deployment state if CLI access is available.
+
 ## Post-Deploy Verification
 
 After every API deploy, verify the deployed service directly:
@@ -567,6 +606,8 @@ These still require explicit operator or agent action:
 - Vercel project setup or correction if GitHub auto deploy is not connected.
 - Manual Cloud Build trigger runs when not deploying by push to `main`.
 - Database backup/restore verification before treating data as production-critical.
+- Staging environment codification.
+- Staging-to-production artifact promotion and migration gates.
 
 ## Agent Checklist
 

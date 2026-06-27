@@ -6,6 +6,11 @@ type KratosWhoAmIResponse = {
   active?: boolean;
   expires_at?: string;
   authenticated_at?: string;
+  verifiable_addresses?: Array<{
+    value?: string;
+    verified?: boolean;
+    status?: string;
+  }>;
   identity?: {
     id?: string;
     traits?: {
@@ -30,11 +35,20 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
 
   private readonly whoamiUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly requireVerifiedEmail: boolean;
+  private readonly onSessionValidated?:
+    | ((session: AuthSession, context: { externalId: string; emailVerified: boolean }) => Promise<void>)
+    | undefined;
 
   constructor(options: {
     providerId?: string;
     protocol: "oidc" | "saml";
     kratosPublicUrl: string;
+    requireVerifiedEmail?: boolean;
+    onSessionValidated?: (
+      session: AuthSession,
+      context: { externalId: string; emailVerified: boolean }
+    ) => Promise<void>;
     fetchImpl?: typeof fetch;
   }) {
     this.providerId = options.providerId ?? "ory-kratos";
@@ -44,6 +58,8 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
       options.kratosPublicUrl.replace(/\/+$/, "")
     ).toString();
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.requireVerifiedEmail = options.requireVerifiedEmail ?? false;
+    this.onSessionValidated = options.onSessionValidated;
   }
 
   async validateBrowserSession(request: {
@@ -89,8 +105,18 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
     if (!payload.active || !identityId || !email || !issuedAt || !expiresAt || !username) {
       return null;
     }
+    const emailVerified = Boolean(
+      payload.verifiable_addresses?.some(
+        (address) =>
+          address.value?.toLowerCase() === email.toLowerCase() &&
+          (address.verified === true || address.status === "completed")
+      )
+    );
+    if (this.requireVerifiedEmail && !emailVerified) {
+      return null;
+    }
 
-    return {
+    const session = {
       sessionId: payload.id ?? `ory:${identityId}`,
       issuedAt,
       expiresAt,
@@ -101,5 +127,18 @@ export default class HostedIdentityProviderAdapter implements IdentityProvider {
         groups: []
       }
     };
+
+    if (this.onSessionValidated) {
+      try {
+        await this.onSessionValidated(session, {
+          externalId: identityId,
+          emailVerified
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    return session;
   }
 }
